@@ -7,7 +7,7 @@ from scipy.integrate import trapezoid
 from rfd_conf import cf
 
 ##############
-# 5. Определение вспомогательнх функций
+# 5. Определение вспомогательных функций
 ##############
 
 def Kex_novec(a_Te):
