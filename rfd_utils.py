@@ -1,13 +1,11 @@
 import math
-import sys
+
+import numpy as np
 from PySpice.Spice.Netlist import Circuit
 from scipy.fft import rfft, rfftfreq
-import numpy as np
-from rfd_conf import ct
 from scipy.integrate import trapezoid
-from rfd_conf import cf
-from rfd_conf import redefineRuntimeParams
-
+from rfd_conf import *
+from scipy import optimize
 
 ##############
 # Определение вспомогательных функций
@@ -191,36 +189,12 @@ def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
 # Определение вспомогательных функций
 ##############
 
-def calcLoadImpedance_1Harm(a_analysis):
-    Vl_raw = getU('3', '0', a_analysis)  # Vl
-    Il_raw = getU('4', '5', a_analysis) / cf["val_R_m"]  # Il
+def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
+    Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
+    Il_raw = getU(a_I1, a_I2, a_analysis) / a_Rval  # Il
 
-    Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2, 'rev')
-    Il_2_last_periods = extract_N_periods(Il_raw, 1, 2, 'rev')
-
-    spectraVl = rfft(Vl_2_last_periods) / (2 * cf["sim_periods_div"])
-    spectraIl = rfft(Il_2_last_periods) / (2 * cf["sim_periods_div"])
-    freqsl = rfftfreq(Vl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
-
-    UU = abs(spectraVl)[2]
-    II = abs(spectraIl)[2]
-
-    Ua = np.angle(spectraVl)[2]
-    Ia = np.angle(spectraIl)[2]
-
-    RL = UU / II * np.cos(Ua - Ia)
-    #    XL=UU/II*np.sin(Ua-Ia)+2*np.pi*config["f0"]*1500e-9
-    XL = UU / II * np.sin(Ua - Ia)
-
-    return (RL, XL)
-
-
-def calcLoadImpedance2_1Harm(a_analysis):
-    Vl_raw = getU('2', '0', a_analysis)  # Vl
-    Il_raw = getU('4', '5', a_analysis) / cf["val_R_m"]  # Il
-
-    Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2, 'rev')
-    Il_2_last_periods = extract_N_periods(Il_raw, 1, 2, 'rev')
+    Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
+    Il_2_last_periods = extract_N_periods(Il_raw, 1, 2)
 
     spectraVl = rfft(Vl_2_last_periods) / (2 * cf["sim_periods_div"])
     spectraIl = rfft(Il_2_last_periods) / (2 * cf["sim_periods_div"])
@@ -290,8 +264,7 @@ def calcPowerBalance(a_analysis, a_Rp):
     P_R_stray = get_mean(t_integration, np.multiply(VRstray_integration, VRstray_integration),
                          cf["num_periods_for_integration"]) / cf["val_R_stray"]
 
-    print(f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W]')
-    print(f'TOTAL: {Ppl + P_R_m + P_R_stray:.2f}')
+    print(f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
 
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2)
     Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2)
@@ -310,7 +283,15 @@ def calcPowerBalance(a_analysis, a_Rp):
     #    XL=UU/II*np.sin(Ua-Ia)+2*np.pi*config["f0"]*1500e-9
     Xpl = UUpl / IIpl * np.sin(Uapl - Iapl)
 
-    print(f'Zpl={Rpl:.2f} j{Xpl:.2f} [Ohm]')
+    # Импеданс на входе C-C звена для проверки согласования (похоже это не работает правильно
+    # т.к. 50 Ом в этой точке будет если это располовиненная цепь - разобраться
+    (Rii, Xii) = calcImpedance_1Harm(a_analysis, '2', '0', '4', '5', cf["val_R_m"])
+
+    # Импеданс на входе C-C звена для проверки согласования (похоже это не работает правильно
+    # т.к. 50 Ом в этой точке будет если это располовиненная цепь - разобраться
+    (Rll, Xll) = calcImpedance_1Harm(a_analysis, '5', '0', '4', '5', cf["val_R_m"])
+
+    print(f'Zi=({Rii:.2f}, {Xii:.2f}) [Ohm], Zl=({Rll:.2f}, {Xll:.2f}) [Ohm], Zp=({Rpl:.2f}, {Xpl:.2f}) [Ohm]')
 
 
 def calcPlasmaQuantities(a_analysis, a_Rp):
@@ -345,3 +326,50 @@ def printSimulationResults(a_analysis, a_out_Rp):
     print(f'=== SIMULATION COMPLETE ===\n')
 
     calcPowerBalance(a_analysis, a_out_Rp)
+
+def redefineRuntimeParams():
+
+    #################
+    # 3. Вычисляемые величины №1
+    #################
+
+    cf["ng"] = cf["p0"] / (ct["k_B"] * cf["T0"])    # Концентрация буферного газа [м^-3]
+    cf["Vp"] = cf["Ae"] * cf["l_B"]                 # Объем плазменного столба
+    cf["fE"] = cf["Ae"] / (cf["Ae"] + cf["Ag"])     # Весовой коэф. слоя E
+    cf["fG"] = cf["Ag"] / (cf["Ae"] + cf["Ag"])     # Весовой коэф. слоя G
+    cf["Tf"] = 1 / cf["f0"]                         # Период ВЧ поля [с]
+
+    #################
+    # 4. Настройки анализа Ngspice и алгоритма
+    #################
+
+    cf["num_periods_sim"] = 500  # Количество периодов ВЧ поля, которое надо просчитать
+    cf["sim_periods_div"] = 100  # Количество точек результата на период
+    cf["tmax_sim"] = cf["Tf"] * cf["num_periods_sim"]  # Сколько времени просчитывать в Ngspice
+    cf["tmin_sim"] = cf["Tf"] * (cf["num_periods_sim"] - 5)  # От какого времени делать вывод
+    cf["timestep_output"] = cf["Tf"] / cf["sim_periods_div"]  # Шаг, с которым будет вывод
+    # Минимально необходимое количество периодов на интегрирование ДУ цепи, при котором результат интеграла сходится.
+    # Это и будет критерий наступления установившегося режима
+    cf["num_periods_for_integration"] = 50
+
+    ##############
+    # 5. Определение Te
+    ##############
+
+    sol = optimize.root_scalar(dfr, bracket=[1, 7], x0=3, x1=5, xtol=1e-3, method='secant')
+    cf["Te"] = sol.root
+    print(f'Te={cf["Te"]:.2f} [eV] ne={cf["ne"]:.2e}')
+
+    ##############
+    # 6. Определение цены ионизации газа
+    ##############
+
+    cf["eps_ex"] = 11.5
+    cf["eps_el"] = 3 * ct["me"] * cf["Te"] / ct["Mi"]
+    cf["eps_iz"] = 15.76  # Энергия ионизации Ar [eV]
+    cf["eps_e"] = 2 * cf["Te"]
+
+    # Строим график Te для ручной проверки
+#    if cf["verbose_plots"]:
+#        plot_Te()
+#        plot_K()
