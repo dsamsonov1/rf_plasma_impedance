@@ -25,7 +25,7 @@ def plot_Te():
 def plot_K():
     en_range = np.arange(1, 7.1, 0.1)
 
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(12, 5))
     plt.plot(en_range, (Kel(en_range) * cf["eps_el"]) / Kiz(en_range), linestyle=':', label='elastic')
     plt.plot(en_range, cf["eps_iz"] * np.ones(en_range.size), linestyle=':', label='ionization')
     plt.plot(en_range, (Kex(en_range) * cf["eps_ex"]) / Kiz(en_range), linestyle=':', label='excitation')
@@ -35,3 +35,4 @@ def plot_K():
     plt.ylabel('Ionization cost [eV]')
     plt.legend()
     plt.grid()
+    plt.show()

@@ -6,13 +6,15 @@ from rfd_conf import ct
 from scipy.integrate import trapezoid
 from rfd_conf import cf
 
+
 ##############
-# 5. Определение вспомогательных функций
+# Определение вспомогательных функций
 ##############
 
 def Kex_novec(a_Te):
     res = 5.02e-15 * np.exp(-12.64 / a_Te)  # 3p1 11.5 eV
     return res
+
 
 Kex = np.vectorize(Kex_novec, otypes=[float])
 
@@ -24,6 +26,7 @@ def Kel_novec(a_Te):
     #    res = lnkel
     return res
 
+
 Kel = np.vectorize(Kel_novec, otypes=[float])
 
 
@@ -33,11 +36,13 @@ def Kiz_novect(a_Te):
     #    res = 7.93e-13*np.exp(-18.9/Te)      # Плохо совпадает с [Schmidt]
     return res
 
+
 Kiz = np.vectorize(Kiz_novect, otypes=[float])
 
 
 def u_Bohm_novect(a_Te):
     return np.sqrt(ct["qe"] * a_Te / ct["Mi"])
+
 
 u_Bohm = np.vectorize(u_Bohm_novect, otypes=[float])
 
@@ -49,7 +54,7 @@ def get_mean(a_T, a_V, a_N):
 
 #    return abs(1/(a_N*Tf) * trapezoid(x=a_T, y=a_V))
 
-def extract_N_periods(array, start, periods_count, direction):
+def extract_N_periods(array, start, periods_count, direction='rev'):
     if direction == 'fwd':
         return array[start * cf["sim_periods_div"]:(start + periods_count) * cf["sim_periods_div"]]
     elif direction == 'rev':
@@ -80,7 +85,8 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     full_abs = np.abs(_spectra)
     full_angle = np.angle(_spectra)
 
-    idxHarm = (a_nHarm + 1) * num_periods_for_spectra  # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
+    idxHarm = (
+                          a_nHarm + 1) * num_periods_for_spectra  # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
     reduced_spectra = _spectra[0:idxHarm]
 
     reduced_freqs = freqsMHz[0:idxHarm]
@@ -103,9 +109,6 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     _spectra, full_abs, full_angle, _freqs, freqsMHz, reduced_freqs, reduced_abs, reduced_angle, waste_freqs, waste_abs,
     waste_angle, true_freqs, true_abs, true_angle)
 
-##############
-# 6. Определение Te
-##############
 
 # Пытаемся найти Te как корень баланса частиц Vp*ng*Kiz(Te)-(Ae + Ag)*u_Bohm(Te) на отрезке [1-7] eV
 def dfr(a_Te):
@@ -115,38 +118,43 @@ def dfr(a_Te):
 def eps_c_novec(a_Te):
     return cf["eps_iz"] + (Kel(a_Te) * cf["eps_el"] + Kex(a_Te) * cf["eps_ex"]) / Kiz(a_Te)
 
+
 eps_c = np.vectorize(eps_c_novec, otypes=[float])
 
 
 def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
     #################
-    # 9. Вычисляемые величины №2
+    # 8. Вычисляемые величины №2
     #################
 
     Km = Kel(a_Te) + Kiz(a_Te) + Kex(a_Te)  # Коэффициент электрон-нейтральных столкновений [м^3*с^-1]
     nu_el_netr = Km * cf["ng"]  # Частота электрон-нейтральных столкновений [c^-1]
     v_midd_e = math.sqrt(8 * ct["qe"] * a_Te / (math.pi * ct["me"]))  # Средняя тепловая скорость электронов
-    nu_eff = nu_el_netr + (v_midd_e / cf["l_B"])  # Эффективная частота электронно-нейтральных столкновений [c^-1]
+    nu_eff = nu_el_netr + (v_midd_e / cf["l_B"])  # Эффективная частота электрон-нейтральных столкновений [c^-1]
     Lp = cf["l_B"] * ct["me"] / (ct["qe"] ** 2 * a_ne * cf["Ae"])  # Индуктивность bulk плазмы [Гн]
     Rp = nu_eff * Lp  # Сопротивление bulk плазмы [Ом]
     alpha = -1 / a_Te  # Коэффициент показателя экспоненты электронного тока
-    Iion1 = ct["qe"] * a_ne * u_Bohm(a_Te) * cf["Ae"]  # Полный ионный ток на управляющий электрод [А]
+    Iion1 = ct["qe"] * a_ne * u_Bohm(a_Te) * cf["Ae"]  # Полный ионный ток на горячий электрод [А]
     Iion2 = ct["qe"] * a_ne * u_Bohm(a_Te) * cf["Ag"]  # Полный ионный ток на заземленный электрод [А]
-    Ie01 = ct["qe"] * a_ne * v_midd_e * cf["Ae"]  # Амплитуда электронного тока у управляющего электрода [А]
+    Ie01 = ct["qe"] * a_ne * v_midd_e * cf["Ae"]  # Амплитуда электронного тока у горячего электрода [А]
     Ie02 = ct["qe"] * a_ne * v_midd_e * cf["Ag"]  # Амплитуда электронного тока у заземленного электрода [А]
-    CCs1 = (ct["qe"] * a_ne * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя управляющего электрода
+    CCs1 = (ct["qe"] * a_ne * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя горячего электрода
     CCs2 = (ct["qe"] * a_ne * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода
 
     if cf["verbose_plots"]:
-        print(f' - VERBOSE: Lp={Lp*1e9:.2f} [nH] Rp={Rp:.2f} [Ohm]')
-        print(f'  - VERBOSE: Be_e={Ie01:.2e}*exp({alpha:.2e}*Vs_e(t)) Bi_e={Iion1:.2e} Cs1={np.sqrt(CCs1):.2e}/sqrt(Vs_e(t))')
-        print(f'  - VERBOSE: Be_g={Ie02:.2e}*exp({alpha:.2e}*Vs_g(t)) Bi_g={Iion2:.2e} Cs2={np.sqrt(CCs2):.2e}/sqrt(Vs_g(t))')
+        print(f' - VERBOSE: Lp={Lp * 1e9:.2f} [nH] Rp={Rp:.2f} [Ohm] alpha={alpha:.2e}')
+        print(
+            f'  - VERBOSE: Be_e={Ie01:.3f} Bi_e={Iion1:.2e} Cs1={np.sqrt(CCs1):.2e}/sqrt(Vs_e(t))')
+        print(
+            f'  - VERBOSE: Be_g={Ie02:.3f} Bi_g={Iion2:.2e} Cs2={np.sqrt(CCs2):.2e}/sqrt(Vs_g(t))')
 
     circuit = Circuit('RF discharge impedance')
     circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"],
-                                    frequency=cf["f0"])  # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
-    # TODO: найти способо обойти ограничение PySpice на задание именно COS источника
+                                    frequency=cf[
+                                        "f0"])  # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
+    # TODO: найти способ обойти ограничение PySpice на задание именно COS источника
     # (сам ngspice это позволяет)
+
     circuit.R('Rrf', 1, 2, cf["val_R_rf"])
     circuit.C('Cm1', 2, 0, a_C_m1)
     circuit.C('Cm2', 2, 3, a_C_m2)
@@ -166,12 +174,16 @@ def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
     circuit.VoltageSource('Viz', 10, 0, 0)
 
     simulator = circuit.simulator()
-    simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}  # Надо задать какие-то (около- но ненулевые НУ,
+
+    # Надо задать какие-то около-, но ненулевые НУ,
     # т.к. иначе pyspice ломается на предупреждениях от Ngspice
+    simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
+
     # print(simulator) # Можно напечатать .IC для проверки
-    #print(circuit) # Можно напечатать получившийся netlist для проверки
+    # print(circuit) # Можно напечатать получившийся netlist для проверки
 
     return simulator.transient(step_time=cf["Tf"] / 100, end_time=cf["tmax_sim"]), Rp
+
 
 ##############
 # Определение вспомогательных функций
@@ -251,17 +263,16 @@ def cmn2(a_RL, a_XL, a_w):
 
 
 def calcPowerBalance(a_analysis, a_Rp):
-
     time_raw = np.array(a_analysis.time)
 
     Vpl_raw = getU('5', '0', a_analysis)  # Vpl
     Ipl_raw = getU('8', '9', a_analysis) / a_Rp  # Ipl
 
-    t_integration = extract_N_periods(time_raw, 1, cf["num_periods_for_integration"],
-                                      'rev')  # data[-(num_perods_for_integration+1)*sim_periods_div:-1*sim_periods_div]
+    t_integration = extract_N_periods(time_raw, 1, cf["num_periods_for_integration"])
+    # data[-(num_periods_for_integration+1)*sim_periods_div:-1*sim_periods_div]
 
-    Vpl_integration = extract_N_periods(Vpl_raw, 1, cf["num_periods_for_integration"], 'rev')
-    Ipl_integration = extract_N_periods(Ipl_raw, 1, cf["num_periods_for_integration"], 'rev')
+    Vpl_integration = extract_N_periods(Vpl_raw, 1, cf["num_periods_for_integration"])
+    Ipl_integration = extract_N_periods(Ipl_raw, 1, cf["num_periods_for_integration"])
     Ppl_integration = np.multiply(Vpl_integration, Ipl_integration)
 
     Ppl = get_mean(t_integration, Ppl_integration, cf["num_periods_for_integration"])
@@ -269,18 +280,19 @@ def calcPowerBalance(a_analysis, a_Rp):
     VRm_raw = getU('4', '5', a_analysis)  # VRm
     VRstray_raw = getU('6', '0', a_analysis)  # VRm
 
-    VRm_integration = extract_N_periods(VRm_raw, 1, cf["num_periods_for_integration"], 'rev')
-    P_R_m = get_mean(t_integration, np.multiply(VRm_integration, VRm_integration), cf["num_periods_for_integration"]) / cf["val_R_m"]
+    VRm_integration = extract_N_periods(VRm_raw, 1, cf["num_periods_for_integration"])
+    P_R_m = get_mean(t_integration, np.multiply(VRm_integration, VRm_integration),
+                     cf["num_periods_for_integration"]) / cf["val_R_m"]
 
-    VRstray_integration = extract_N_periods(VRstray_raw, 1, cf["num_periods_for_integration"], 'rev')
+    VRstray_integration = extract_N_periods(VRstray_raw, 1, cf["num_periods_for_integration"])
     P_R_stray = get_mean(t_integration, np.multiply(VRstray_integration, VRstray_integration),
                          cf["num_periods_for_integration"]) / cf["val_R_stray"]
 
     print(f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W]')
     print(f'TOTAL: {Ppl + P_R_m + P_R_stray:.2f}')
 
-    Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2, 'rev')
-    Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2, 'rev')
+    Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2)
+    Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2)
 
     spectraVpl = rfft(Vpl_2_last_periods) / (2 * cf["sim_periods_div"])
     spectraIpl = rfft(Ipl_2_last_periods) / (2 * cf["sim_periods_div"])
@@ -297,6 +309,34 @@ def calcPowerBalance(a_analysis, a_Rp):
     Xpl = UUpl / IIpl * np.sin(Uapl - Iapl)
 
     print(f'Zpl={Rpl:.2f} j{Xpl:.2f} [Ohm]')
+
+
+def calcPlasmaQuantities(a_analysis, a_Rp):
+    time_raw = np.array(a_analysis.time)
+    Vpl_raw = getU('5', '0', a_analysis)  # Vpl
+    Ipl_raw = getU('8', '9', a_analysis) / a_Rp  # Ipl
+    Vs1_raw = getU('5', '7', a_analysis)  # Vs1
+    Vs2_raw = getU('9', '10', a_analysis)  # Vs2
+
+    t_integration = extract_N_periods(time_raw, 1, cf["num_periods_for_integration"])
+
+    Vpl_integration = extract_N_periods(Vpl_raw, 1, cf["num_periods_for_integration"])
+    Ipl_integration = extract_N_periods(Ipl_raw, 1, cf["num_periods_for_integration"])
+
+    Ppl_integration = np.multiply(Vpl_integration, Ipl_integration)
+
+    Ppl = get_mean(t_integration, Ppl_integration, cf["num_periods_for_integration"])
+
+    Vs1_integration = extract_N_periods(Vs1_raw, 1, cf["num_periods_for_integration"])
+    Vs2_integration = extract_N_periods(Vs2_raw, 1, cf["num_periods_for_integration"])
+
+    _Vs1 = get_mean(t_integration, Vs1_integration, cf["num_periods_for_integration"])
+    _Vs2 = get_mean(t_integration, Vs2_integration, cf["num_periods_for_integration"])
+
+    if cf["verbose_plots"]:
+        print(f'  - VERBOZE: Vs_e={np.abs(_Vs1):.2f} [V] Vs_g={np.abs(_Vs2):.2f} [V]')
+
+    return Ppl, _Vs1, _Vs2
 
 
 def printSimulationResults(a_analysis, a_out_Rp):
