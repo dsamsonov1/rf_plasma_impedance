@@ -1,10 +1,12 @@
 import math
+import sys
 from PySpice.Spice.Netlist import Circuit
 from scipy.fft import rfft, rfftfreq
 import numpy as np
 from rfd_conf import ct
 from scipy.integrate import trapezoid
 from rfd_conf import cf
+from rfd_conf import redefineRuntimeParams
 
 
 ##############
@@ -86,7 +88,7 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     full_angle = np.angle(_spectra)
 
     idxHarm = (
-                          a_nHarm + 1) * num_periods_for_spectra  # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
+                      a_nHarm + 1) * num_periods_for_spectra  # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
     reduced_spectra = _spectra[0:idxHarm]
 
     reduced_freqs = freqsMHz[0:idxHarm]
@@ -106,8 +108,9 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     true_angle = reduced_angle[idxrange]
 
     return (
-    _spectra, full_abs, full_angle, _freqs, freqsMHz, reduced_freqs, reduced_abs, reduced_angle, waste_freqs, waste_abs,
-    waste_angle, true_freqs, true_abs, true_angle)
+        _spectra, full_abs, full_angle, _freqs, freqsMHz, reduced_freqs, reduced_abs, reduced_angle, waste_freqs,
+        waste_abs,
+        waste_angle, true_freqs, true_abs, true_angle)
 
 
 # Пытаемся найти Te как корень баланса частиц Vp*ng*Kiz(Te)-(Ae + Ag)*u_Bohm(Te) на отрезке [1-7] eV
@@ -150,8 +153,7 @@ def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
 
     circuit = Circuit('RF discharge impedance')
     circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"],
-                                    frequency=cf[
-                                        "f0"])  # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
+                                    frequency=cf["f0"])  # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
     # TODO: найти способ обойти ограничение PySpice на задание именно COS источника
     # (сам ngspice это позволяет)
 
@@ -179,8 +181,8 @@ def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
     # т.к. иначе pyspice ломается на предупреждениях от Ngspice
     simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
 
-    # print(simulator) # Можно напечатать .IC для проверки
-    # print(circuit) # Можно напечатать получившийся netlist для проверки
+    #print(simulator) # Можно напечатать .IC для проверки
+    #print(circuit) # Можно напечатать получившийся netlist для проверки
 
     return simulator.transient(step_time=cf["Tf"] / 100, end_time=cf["tmax_sim"]), Rp
 
