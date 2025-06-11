@@ -8,6 +8,7 @@ from rfd_conf import *
 from scipy import optimize
 import pandas as pd
 
+
 ##############
 # Определение вспомогательных функций
 ##############
@@ -124,66 +125,50 @@ def eps_c_novec(a_Te):
 eps_c = np.vectorize(eps_c_novec, otypes=[float])
 
 
-def calcCircuit(a_Te, a_ne, a_C_m1, a_C_m2):
-    #################
-    # 8. Вычисляемые величины №2
-    #################
-
-    Km = Kel(a_Te) + Kiz(a_Te) + Kex(a_Te)  # Коэффициент электрон-нейтральных столкновений [м^3*с^-1]
-    nu_el_netr = Km * cf["ng"]  # Частота электрон-нейтральных столкновений [c^-1]
-    v_midd_e = math.sqrt(8 * ct["qe"] * a_Te / (math.pi * ct["me"]))  # Средняя тепловая скорость электронов
-    nu_eff = nu_el_netr + (v_midd_e / cf["l_B"])  # Эффективная частота электрон-нейтральных столкновений [c^-1]
-    Lp = cf["l_B"] * ct["me"] / (ct["qe"] ** 2 * a_ne * cf["Ae"])  # Индуктивность bulk плазмы [Гн]
-    Rp = nu_eff * Lp  # Сопротивление bulk плазмы [Ом]
-    alpha = -1 / a_Te  # Коэффициент показателя экспоненты электронного тока
-    Iion1 = ct["qe"] * a_ne * u_Bohm(a_Te) * cf["Ae"]  # Полный ионный ток на горячий электрод [А]
-    Iion2 = ct["qe"] * a_ne * u_Bohm(a_Te) * cf["Ag"]  # Полный ионный ток на заземленный электрод [А]
-    Ie01 = ct["qe"] * a_ne * v_midd_e * cf["Ae"]  # Амплитуда электронного тока у горячего электрода [А]
-    Ie02 = ct["qe"] * a_ne * v_midd_e * cf["Ag"]  # Амплитуда электронного тока у заземленного электрода [А]
-    CCs1 = (ct["qe"] * a_ne * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя горячего электрода
-    CCs2 = (ct["qe"] * a_ne * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода
+def calcCircuit():
 
     if cf["verbose_plots"]:
-        print(f' - VERBOSE: Lp={Lp * 1e9:.2f} [nH] Rp={Rp:.2f} [Ohm] alpha={alpha:.2e}')
+        print(f' - VERBOSE: Lp={cf["Lp"] * 1e9:.2f} [nH] Rp={cf["Rp"]:.2f} [Ohm] alpha={cf["alpha"]:.2e}')
         print(
-            f'  - VERBOSE: Be_e={Ie01:.3f} Bi_e={Iion1:.2e} Cs1={np.sqrt(CCs1):.2e}/sqrt(Vs_e(t))')
+            f'  - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
         print(
-            f'  - VERBOSE: Be_g={Ie02:.3f} Bi_g={Iion2:.2e} Cs2={np.sqrt(CCs2):.2e}/sqrt(Vs_g(t))')
+            f'  - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
 
     circuit = Circuit('RF discharge impedance')
-    circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"],
-                                    frequency=cf["f0"])  # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
+    circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"], frequency=cf["f0"])
+    # Фаза результатов сдвинута относительно [Schmidt], т.к. там cos, а тут sin
     # TODO: найти способ обойти ограничение PySpice на задание именно COS источника
     # (сам ngspice это позволяет)
 
     circuit.R('Rrf', 1, 2, cf["val_R_rf"])
-    circuit.C('Cm1', 2, 0, a_C_m1)
-    circuit.C('Cm2', 2, 3, a_C_m2)
+    circuit.C('Cm1', 2, 0, cf["val_C_m1"])
+    circuit.C('Cm2', 2, 3, cf["val_C_m2"])
     circuit.L('Lm2', 3, 4, cf["val_L_m2"])
     #    circuit.L('LL', 5, 0, 10e-9)
     circuit.R('Rm', 4, 5, cf["val_R_m"])
     circuit.C('Cstray', 5, 6, cf["val_C_stray"])
     circuit.R('Rstray', 6, 0, cf["val_R_stray"])
-    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {Ie01}*exp({alpha}*v(7,5)) : 1e-12')
-    circuit.CurrentSource('Bi_e', 7, 5, Iion1)
-    circuit.BehavioralCapacitor('Cs1', 7, 5, capacitance_expression=f'C=\'sqrt({CCs1}/abs(v(7,5)))\'')
-    circuit.L('L_p', 7, 8, Lp)
-    circuit.R('R_p', 8, 9, Rp)
-    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {Ie02}*exp({alpha}*v(9,10)) : 1e-12')
-    circuit.CurrentSource('Bi_g', 9, 10, Iion2)
-    circuit.BehavioralCapacitor('Cs2', 9, 10, capacitance_expression=f'C=\'sqrt({CCs2}/abs(v(9,10)))\'')
+    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {cf["Ie01"]}*exp({cf["alpha"]}*v(7,5)) : 1e-12')
+    circuit.CurrentSource('Bi_e', 7, 5, cf["Iion1"])
+    circuit.BehavioralCapacitor('Cs1', 7, 5, capacitance_expression=f'C=\'sqrt({cf["CCs1"]}/abs(v(7,5)))\'')
+    circuit.L('L_p', 7, 8, cf["Lp"])
+    circuit.R('R_p', 8, 9, cf["Rp"])
+    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {cf["Ie02"]}*exp({cf["alpha"]}*v(9,10)) : 1e-12')
+    circuit.CurrentSource('Bi_g', 9, 10, cf["Iion2"])
+    circuit.BehavioralCapacitor('Cs2', 9, 10, capacitance_expression=f'C=\'sqrt({cf["CCs2"]}/abs(v(9,10)))\'')
     circuit.VoltageSource('Viz', 10, 0, 0)
-
+#    circuit.LosslessTransmissionLine('TL', 5, 0, 0, 0, impedance=50, frequency=cf["f0"], normalized_length=0.25)
+#    circuit.SingleLossyTransmissionLine('TL', 5, 0, 0, 0, model='ymod', length=1, raw_spice='\n.MODEL ymod txl R=0.1 L=8.972e-9 G=0 C=0.468e-12 length=22.12')
     simulator = circuit.simulator()
 
     # Надо задать какие-то около-, но ненулевые НУ,
     # т.к. иначе pyspice ломается на предупреждениях от Ngspice
     simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
 
-    #print(simulator) # Можно напечатать .IC для проверки
-    #print(circuit) # Можно напечатать получившийся netlist для проверки
+    # print(simulator) # Можно напечатать .IC для проверки
+    # print(circuit) # Можно напечатать получившийся netlist для проверки
 
-    return simulator.transient(step_time=cf["Tf"] / 100, end_time=cf["tmax_sim"]), Rp
+    return simulator.transient(step_time=cf["Tf"] / 100, end_time=cf["tmax_sim"]), cf["Rp"]
 
 
 ##############
@@ -213,15 +198,16 @@ def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
 
     return RL, XL
 
-def calcVoltage_0Harm(a_analysis, a_u1, a_U2):
+
+def calcVoltage_Harm(a_analysis, a_u1, a_U2, a_harm):
     Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
 
     Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
 
     spectraVl = rfft(Vl_2_last_periods) / (2 * cf["sim_periods_div"])
-    freqsl = rfftfreq(Vl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
+    # freqsl = rfftfreq(Vl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
 
-    return np.real(spectraVl[0])
+    return np.real(spectraVl[a_harm])
 
 
 # Расчет элементов согласующего Г-образного четырехполюсника (см. сербов)
@@ -275,7 +261,8 @@ def calcPowerBalance(a_analysis, a_Rp):
     P_R_stray = get_mean(t_integration, np.multiply(VRstray_integration, VRstray_integration),
                          cf["num_periods_for_integration"]) / cf["val_R_stray"]
 
-    print(f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
+    print(
+        f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
 
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2)
     Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2)
@@ -344,17 +331,17 @@ def printSimulationResults(a_analysis, a_out_Rp):
 
     calcPowerBalance(a_analysis, a_out_Rp)
 
-def redefineRuntimeParams():
 
+def redefineRuntimeParams():
     #################
     # 3. Вычисляемые величины №1
     #################
 
-    cf["ng"] = cf["p0"] / (ct["k_B"] * cf["T0"])    # Концентрация буферного газа [м^-3]
-    cf["Vp"] = cf["Ae"] * cf["l_B"]                 # Объем плазменного столба
-    cf["fE"] = cf["Ae"] / (cf["Ae"] + cf["Ag"])     # Весовой коэф. слоя E
-    cf["fG"] = cf["Ag"] / (cf["Ae"] + cf["Ag"])     # Весовой коэф. слоя G
-    cf["Tf"] = 1 / cf["f0"]                         # Период ВЧ поля [с]
+    cf["ng"] = cf["p0"] / (ct["k_B"] * cf["T0"])  # Концентрация буферного газа [м^-3]
+    cf["Vp"] = cf["Ae"] * cf["l_B"]  # Объем плазменного столба
+    cf["fE"] = cf["Ae"] / (cf["Ae"] + cf["Ag"])  # Весовой коэф. слоя E
+    cf["fG"] = cf["Ag"] / (cf["Ae"] + cf["Ag"])  # Весовой коэф. слоя G
+    cf["Tf"] = 1 / cf["f0"]  # Период ВЧ поля [с]
 
     #################
     # 4. Настройки анализа Ngspice и алгоритма
@@ -390,3 +377,22 @@ def redefineRuntimeParams():
 #    if cf["verbose_plots"]:
 #        plot_Te()
 #        plot_K()
+
+    #################
+    # 8. Вычисляемые величины №2
+    #################
+
+    Km = Kel(cf["Te"]) + Kiz(cf["Te"]) + Kex(cf["Te"])  # Коэффициент электрон-нейтральных столкновений [м^3*с^-1]
+    nu_el_netr = Km * cf["ng"]  # Частота электрон-нейтральных столкновений [c^-1]
+    v_midd_e = math.sqrt(8 * ct["qe"] * cf["Te"] / (math.pi * ct["me"]))  # Средняя тепловая скорость электронов
+    nu_eff = nu_el_netr + (v_midd_e / cf["l_B"])  # Эффективная частота электрон-нейтральных столкновений [c^-1]
+
+    cf["Lp"] = cf["l_B"] * ct["me"] / (ct["qe"] ** 2 * cf["ne"] * cf["Ae"])  # Индуктивность bulk плазмы [Гн]
+    cf["Rp"] = nu_eff * cf["Lp"]  # Сопротивление bulk плазмы [Ом]
+    cf["alpha"] = -1 / cf["Te"]  # Коэффициент показателя экспоненты электронного тока
+    cf["Iion1"] = ct["qe"] * cf["ne"] * u_Bohm(cf["Te"]) * cf["Ae"]  # Полный ионный ток на горячий электрод [А]
+    cf["Iion2"] = ct["qe"] * cf["ne"] * u_Bohm(cf["Te"]) * cf["Ag"]  # Полный ионный ток на заземленный электрод [А]
+    cf["Ie01"] = ct["qe"] * cf["ne"] * v_midd_e * cf["Ae"]  # Амплитуда электронного тока у горячего электрода [А]
+    cf["Ie02"] = ct["qe"] * cf["ne"] * v_midd_e * cf["Ag"]  # Амплитуда электронного тока у заземленного электрода [А]
+    cf["CCs1"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя горячего электрода
+    cf["CCs2"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода

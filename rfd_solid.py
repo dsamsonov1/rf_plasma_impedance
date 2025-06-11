@@ -49,7 +49,7 @@ def calc_discharge():
 
                 print(f'  -- ne iteration #{iter_no: =2} starts --\n', end=' ')
 
-                (analysis, out_Rp) = calcCircuit(cf["Te"], cf["ne"], cf["val_C_m1"], cf["val_C_m2"])
+                (analysis, out_Rp) = calcCircuit()
                 (Ppl, _Vs1, _Vs2) = calcPlasmaQuantities(analysis, out_Rp)
 
                 ##############
@@ -73,9 +73,7 @@ def calc_discharge():
                 #                    cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * \
                 #                        (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * ct["qe"] * np.abs(_Vs1) + cf["fG"] * ct["qe"] * np.abs(_Vs2) + cf["Te"] / 2))
 
-                print(
-                    f'  - OUT: Ppl={Ppl:.2f} [W] Pguess={Pguess:.2f} [W] ne={cf["ne"]:.2e} [cm^-3], ne_new={ne_new:.2e} [cm^-3]',
-                    end=' ')
+                print(f'  - OUT: Ppl={Ppl:.2f} [W] Pguess={Pguess:.2f} [W] ne={cf["ne"]:.2e} [cm^-3], ne_new={ne_new:.2e} [cm^-3]', end=' ')
 
                 if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
                     print(f'|ne_new - ne|={np.abs(ne_new - cf["ne"]):.2e} <- ne CONVERGED')
@@ -90,8 +88,7 @@ def calc_discharge():
                     # Импеданс на выходе C-C звена для расчета согласования
                     (Rmm, Xmm) = calcImpedance_1Harm(analysis, '3', '0', '4', '5', cf["val_R_m"])
 
-                    print(
-                        f'   - OUT: Z_m=({Rmm:.2f}, {Xmm:.2f}) [Ohm] ---> {np.abs(complex(Rmm, Xmm)):.2f}*exp(j*{np.degrees(np.angle(complex(Rmm, Xmm))):.2f}deg)')
+                    print(f'   - OUT: Z_m=({Rmm:.2f}, {Xmm:.2f}) [Ohm] ---> {np.abs(complex(Rmm, Xmm)):.2f}*exp(j*{np.degrees(np.angle(complex(Rmm, Xmm))):.2f}deg)')
 
                     if matching_flag:
                         (cf["val_C_m2"], cf["val_C_m1"]) = calcMatchingNetwork(Rmm, Xmm, 2 * np.pi * cf["f0"], 50)
@@ -118,9 +115,9 @@ def calc_discharge():
                 print(f'  -- iteration #{iter_no: =2} complete --\n')
 
             else:
-                #print(f'ne NOT CONVERGED. ITERATIONS LIMIT REACHED\n')
+                # print(f'ne NOT CONVERGED. ITERATIONS LIMIT REACHED\n')
+                # matching_cond = False
                 sys.exit("ne NOT CONVERGED. ITERATIONS LIMIT REACHED. STOP.")
-                matching_cond = False
 
     if iter_no < cf["max_iter_ne"]:
         printSimulationResults(analysis, out_Rp)
@@ -128,14 +125,20 @@ def calc_discharge():
 
     pd1 = calcPowerBalance(analysis, out_Rp)
     _, Vs1, Vs2 = calcPlasmaQuantities(analysis, out_Rp)
-    Ub = calcVoltage_0Harm(analysis, '5', '0')
+    Ubias = calcVoltage_Harm(analysis, '5', '0', 0)
+    Urf = calcVoltage_Harm(analysis, '5', '0', 2)
 
     pd2 = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
                         'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
                         'L1 [nH]': [cf["val_L_m2"]/1e-9], 'P0 [W]': [(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50],
-                        'Vp [m^3]': [cf["Vp"]], 'ng': [cf["ng"]], 'Kiz': [Kiz(cf["Te"])], 'eps_c': [eps_c(cf["Te"])],
-                        'eps_e': [cf["eps_e"]], 'fE': [cf["fE"]], 'fG': [cf["fG"]], 'Vs1': [Vs1], 'Vs2': [Vs2],
-                        'Ub': [Ub]})
+                        'Vp [m^3]': [cf["Vp"]], 'ng [m^-3]': [cf["ng"]], 'Kiz []': [Kiz(cf["Te"])], 'eps_c []': [eps_c(cf["Te"])],
+                        'eps_e []': [cf["eps_e"]], 'fE []': [cf["fE"]], 'fG []': [cf["fG"]], 'Vs1 [V]': [Vs1], 'Vs2 [V]': [Vs2],
+                        'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Ae [m^2]': [cf["Ae"]], 'Ag [m^2]': [cf["Ag"]],
+                        'L_bulk [m]': [cf["l_B"]], 'T0 [K]': [cf["T0"]], 'Rrf [Ω]': [cf['val_R_rf']], 'Rm [Ω]': [cf['val_R_m']],
+                        'Cstray [pF]': [cf['val_C_stray']], 'Rstray [Ω]': [cf['val_R_stray']], "Ie01 [A]": [cf["Ie01"]],
+                        "alpha []": [cf["alpha"]], "Iion1 [Ω]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
+                        "Rp [Ω]": [cf["Rp"]], "Ie02 [A]": [cf["Ie02"]], "Iion2 [A]": [cf["Iion2"]], "CCs2 []": [cf["CCs2"]],
+                        "Vm [V]": [cf["Vm"]]})
 
     return pd.concat([pd1, pd2], axis=1)
 
