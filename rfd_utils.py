@@ -6,6 +6,7 @@ from scipy.fft import rfft, rfftfreq
 from scipy.integrate import trapezoid
 from rfd_conf import *
 from scipy import optimize
+import pandas as pd
 
 ##############
 # Определение вспомогательных функций
@@ -210,7 +211,17 @@ def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
     #    XL=UU/II*np.sin(Ua-Ia)+2*np.pi*config["f0"]*1500e-9
     XL = UU / II * np.sin(Ua - Ia)
 
-    return (RL, XL)
+    return RL, XL
+
+def calcVoltage_0Harm(a_analysis, a_u1, a_U2):
+    Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
+
+    Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
+
+    spectraVl = rfft(Vl_2_last_periods) / (2 * cf["sim_periods_div"])
+    freqsl = rfftfreq(Vl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
+
+    return np.real(spectraVl[0])
 
 
 # Расчет элементов согласующего Г-образного четырехполюсника (см. сербов)
@@ -292,6 +303,12 @@ def calcPowerBalance(a_analysis, a_Rp):
     (Rll, Xll) = calcImpedance_1Harm(a_analysis, '5', '0', '4', '5', cf["val_R_m"])
 
     print(f'Zi=({Rii:.2f}, {Xii:.2f}) [Ohm], Zl=({Rll:.2f}, {Xll:.2f}) [Ohm], Zp=({Rpl:.2f}, {Xpl:.2f}) [Ohm]')
+
+    return pd.DataFrame({'Re(Zi) [Ohm]': [Rii], 'Im(Zi) [Ohm]': [Xii],
+                         'Re(Zl) [Ohm]': [Rll], 'Im(Zl) [Ohm]': [Xll],
+                         'Re(Zp) [Ohm]': [Rpl], 'Im(Zp) [Ohm]': [Xpl],
+                         'Pp [W]': [Ppl], 'PRm [W]': P_R_m, 'PRstray [W]': P_R_stray,
+                         'Ptot [W]': Ppl + P_R_m + P_R_stray})
 
 
 def calcPlasmaQuantities(a_analysis, a_Rp):
