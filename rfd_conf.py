@@ -51,7 +51,7 @@ def loadConf(a_cfname):
 # 2. Загружаем параметры рабочей точки ВЧ разряда
 #################
 
-cfname = 'as1-c'
+cfname = 'pc1'
 
 cf = loadConf(cfname)
 

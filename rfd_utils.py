@@ -77,9 +77,9 @@ ang_normalize = np.vectorize(ang_normalize_novec, otypes=[float])
 
 
 def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
-    data_cut = extract_N_periods(a_Data, first_steady_period, num_periods_for_spectra, 'fwd')
-    _spectra = rfft(data_cut) / (num_periods_for_spectra * sim_periods_div)
-    _freqs = rfftfreq(data_cut.size, d=Tf / sim_periods_div)
+    data_cut = extract_N_periods(a_Data, cf["first_steady_period"], num_periods_for_spectra, 'fwd')
+    _spectra = rfft(data_cut) / (num_periods_for_spectra * cf["sim_periods_div"])
+    _freqs = rfftfreq(data_cut.size, d=cf["Tf"] / cf["sim_periods_div"])
 
     freqsMHz = _freqs / 1e6
 
@@ -363,6 +363,7 @@ def redefineRuntimeParams():
     # Минимально необходимое количество периодов на интегрирование ДУ цепи, при котором результат интеграла сходится.
     # Это и будет критерий наступления установившегося режима
     cf["num_periods_for_integration"] = 50
+    cf["first_steady_period"] = cf["num_periods_sim"] - cf["num_periods_for_integration"]
 
     ##############
     # 5. Определение Te

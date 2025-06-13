@@ -20,5 +20,6 @@
     "matching_flag": true,
     "eps_ne": 1e12,
     "max_iter_ne": 50,
-    "verbose_plots": false
+    "verbose_plots": false,
+    "cooling": false
 }
