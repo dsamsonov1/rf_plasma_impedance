@@ -15,17 +15,12 @@ def calc_discharge():
 
     matching_flag = cf["matching_flag"]
 
-    val_C_m2_prev = 0
-    val_C_m1_prev = 0
-
     miter = 0
     matching_cond = True
     # print(f'mc={np.abs(val_C_m1 - val_C_m1_prev) > 5e-12 and np.abs(val_C_m2 - val_C_m2_prev) > 5e-12}', end=' ')
 
-    print(
-        f'RF excitation: P0={(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50:.2f} [W], f0={cf["f0"] / 1e6:.2f} [MHz], p={cf["p0"]} [Pa] Ar\n')
-    print(
-        f'Constant parameters: Vp={cf["Vp"]:.2e} ng={cf["ng"]:.2e} Kiz={Kiz(cf["Te"]):.2e} eps_c={eps_c(cf["Te"]):.2e} eps_e={cf["eps_e"]:.2e} fE={cf["fE"]:.2e} fG={cf["fG"]:.2e}\n\n')
+    print(f'RF excitation: P0={(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50:.2f} [W], f0={cf["f0"] / 1e6:.2f} [MHz], p={cf["p0"]} [Pa] Ar\n')
+    print(f'Constant parameters: Vp={cf["Vp"]:.2e} ng={cf["ng"]:.2e} Kiz={Kiz(cf["Te"]):.2e} eps_c={eps_c(cf["Te"]):.2e} eps_e={cf["eps_e"]:.2e} fE={cf["fE"]:.2e} fG={cf["fG"]:.2e}\n\n')
 
     print(f'=== SIMULATION STARTS ===\n')
 
@@ -47,7 +42,7 @@ def calc_discharge():
             if iter_no < cf["max_iter_ne"]:
                 iter_no = iter_no + 1
 
-                print(f'  -- ne iteration #{iter_no: =2} starts --\n', end=' ')
+                print(f'  -- ne #{iter_no: =2}:', end=' ')
 
                 (analysis, out_Rp) = calcCircuit()
                 (Ppl, _Vs1, _Vs2) = calcPlasmaQuantities(analysis, out_Rp)
@@ -57,26 +52,19 @@ def calc_discharge():
                 ##############
 
                 Pguess = cf["ne"] * cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * ct["qe"] * \
-                         (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(_Vs1) + cf["fG"] * np.abs(_Vs2) + cf[
-                             "Te"] / 2)
-                #               Pguess = cf["ne"] * cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * \
-                #                          (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * ct["qe"] * np.abs(_Vs1) + cf["fG"] * ct["qe"] * np.abs(_Vs2) + cf["Te"] / 2)
+                         (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(_Vs1) + cf["fG"] * np.abs(_Vs2) + cf["Te"] / 2)
 
                 ne_new = Ppl / (cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * ct["qe"] * \
-                                (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(_Vs1) + cf["fG"] * np.abs(_Vs2) + cf[
-                                    "Te"] / 2))
+                                (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(_Vs1) + cf["fG"] * np.abs(_Vs2) + cf["Te"] / 2))
 
                 # "регуляризация" для улучшения сходимости итераций ne (suggested by G. Marchiy)
                 ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
 
-                #               ne_new = Ppl / (
-                #                    cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * \
-                #                        (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * ct["qe"] * np.abs(_Vs1) + cf["fG"] * ct["qe"] * np.abs(_Vs2) + cf["Te"] / 2))
-
-                print(f'  - OUT: Ppl={Ppl:.2f} [W] Pguess={Pguess:.2f} [W] ne={cf["ne"]:.2e} [cm^-3], ne_new={ne_new:.2e} [cm^-3]', end=' ')
+                print(f'Ppl={Ppl:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3]', end=' ')
+                #plot_UI(analysis, out_Rp)
 
                 if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
-                    print(f'|ne_new - ne|={np.abs(ne_new - cf["ne"]):.2e} <- ne CONVERGED')
+                    print(f'dne={np.abs(ne_new - cf["ne"]):.2e} <- ne CONVERGED')
 
                     ##############
                     # Определение импеданса нагрузки для согласования
@@ -88,20 +76,16 @@ def calc_discharge():
                     # Импеданс на выходе C-C звена для расчета согласования
                     (Rmm, Xmm) = calcImpedance_1Harm(analysis, '3', '0', '4', '5', cf["val_R_m"])
 
-                    print(f'   - OUT: Z_m=({Rmm:.2f}, {Xmm:.2f}) [Ohm] ---> {np.abs(complex(Rmm, Xmm)):.2f}*exp(j*{np.degrees(np.angle(complex(Rmm, Xmm))):.2f}deg)')
+                    print(f'   - OUT: Z_m=({Rmm:.2f}, {Xmm:.2f}) [Ohm] -> {np.abs(complex(Rmm, Xmm)):.2f}*exp(j*{np.degrees(np.angle(complex(Rmm, Xmm))):.2f}deg)')
 
                     if matching_flag:
                         (cf["val_C_m2"], cf["val_C_m1"]) = calcMatchingNetwork(Rmm, Xmm, 2 * np.pi * cf["f0"], 50)
-                        print(
-                            f'- dCm1={np.abs(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={np.abs(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]',
-                            end=' ')
+                        print(f'-- dCm1={np.abs(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={np.abs(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]', end=' ')
 
-                        matching_cond = np.abs(cf["val_C_m1"] - val_C_m1_prev) > 1e-12 or np.abs(
-                            cf["val_C_m2"] - val_C_m2_prev) > 1e-12
+                        matching_cond = np.abs(cf["val_C_m1"] - val_C_m1_prev) > 1e-12 or np.abs(cf["val_C_m2"] - val_C_m2_prev) > 1e-12
 
                         if matching_cond:
-                            print(
-                                f'<- NEW MATCHING VALUES: C1={cf["val_C_m1"] * 1e12:.2f} C2={cf["val_C_m2"] * 1e12:.2f}\n')
+                            print(f'<- NEW MATCHING VALUES: C1={cf["val_C_m1"] * 1e12:.2f} C2={cf["val_C_m2"] * 1e12:.2f}\n')
                             if cf["val_C_m1"] <= 0 or cf["val_C_m2"] <= 0:
                                 sys.exit("Wrong C1 or C2 value. STOP.")
                         else:
@@ -110,9 +94,7 @@ def calc_discharge():
                     else:
                         matching_cond = False
                 else:
-                    print(f'|ne_new - ne|={np.abs(ne_new - cf["ne"]):.2e}')
-
-                print(f'  -- iteration #{iter_no: =2} complete --\n')
+                    print(f'dne={np.abs(ne_new - cf["ne"]):.2e} --', end='\n')
 
             else:
                 # print(f'ne NOT CONVERGED. ITERATIONS LIMIT REACHED\n')
@@ -128,6 +110,8 @@ def calc_discharge():
     Ubias = calcVoltage_Harm(analysis, '5', '0', 0)
     Urf = calcVoltage_Harm(analysis, '5', '0', 2)
 
+    print(f'Ubias = {Ubias:.2f}', end='\n')
+
     pd2 = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
                         'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
                         'L1 [nH]': [cf["val_L_m2"]/1e-9], 'P0 [W]': [(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50],
@@ -142,8 +126,8 @@ def calc_discharge():
 
     return pd.concat([pd1, pd2], axis=1)
 
-sweep_freq = False  # True
-sweep_pressure = True
+sweep_freq = False
+sweep_pressure = False
 
 df = pd.DataFrame()
 
@@ -160,7 +144,7 @@ if sweep_freq:
         cf["f0"] = freqs[i]
         cf["val_L_m2"] = inds[i]
         redefineRuntimeParams()
-        df = pd.concat([calc_discharge(), df], ignore_index=True)
+        df = pd.concat([df, calc_discharge()], ignore_index=True)
 
 elif sweep_pressure:
 
@@ -173,7 +157,7 @@ elif sweep_pressure:
 
 else:
     redefineRuntimeParams()
-    calc_discharge()
+    df = pd.concat([df, calc_discharge()], ignore_index=True)
 
 print(df)
-df.to_excel('output.xlsx', index=False)
+df.to_excel(f'out/{cf["name"]}.xlsx', index=False)

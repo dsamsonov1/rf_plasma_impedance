@@ -58,13 +58,14 @@ def plot_UI(a_analysis, a_Rp):
 
     # Строим ток и напряжение на плазме (2 периода)
 
+    #TODO разобраться с отображением и учетом в коде steady линии на графике
     first_steady_period = 400  # Номер периода, с которого считаем, что установившийся режим наступил
 
     time_2_last_periods = extract_N_periods(time_raw, 1, 2, 'rev')
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2, 'rev')
     Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2, 'rev')
 
-    fig, ax1 = plt.subplots(nrows=2, ncols=1, figsize=(12, 10))
+    fig, ax1 = plt.subplots(nrows=3, ncols=1, figsize=(12, 15))
 
     ax1[0].set_xlabel('time (s)')
     ax1[0].set_ylabel('Vpl [V]', color='tab:red')
@@ -77,7 +78,10 @@ def plot_UI(a_analysis, a_Rp):
     ax2.tick_params(axis='y', labelcolor='tab:blue')
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     ax1[0].legend()
-    ax1[1].plot(time_raw / cf["Tf"], Vpl_raw)  # Обзорный график для определения установившегося режима
+    ax1[1].plot(time_raw / cf["Tf"], Vpl_raw, label='Vp', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1[1].plot(time_raw / cf["Tf"], Vs1_raw, label='Vs1', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1[1].plot(time_raw / cf["Tf"], Vs2_raw, label='Vs2', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1[1].set_ylabel('U [V]')
     ax1[1].axvline(first_steady_period, color='cyan', linestyle=':', label='steady state')
     ax1[1].legend()
     _ = ax1[1].set_xlabel('Periods count')

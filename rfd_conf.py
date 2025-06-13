@@ -42,6 +42,7 @@ def loadConf(a_cfname):
     o_cf["eps_ne"] = data["eps_ne"]
     o_cf["max_iter_ne"] = data["max_iter_ne"]
     o_cf["verbose_plots"] = data["verbose_plots"]
+    o_cf["cooling"] = data["cooling"]
 
     return o_cf
 
@@ -50,17 +51,9 @@ def loadConf(a_cfname):
 # 2. Загружаем параметры рабочей точки ВЧ разряда
 #################
 
-cfname = "pc1"
+cfname = 'as1-c'
 
 cf = loadConf(cfname)
 
-
 # Размер зеркала макета М1: 250х185 -> площадь 0.0462 м2, емкость при d=1 мм: 410 пФ
 # Значения Rm и Rstray примерно соответствуют расчетам СУ с потерями
-
-
-def resetResults():
-    return {};
-
-
-rs = resetResults();

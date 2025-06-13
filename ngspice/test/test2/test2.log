@@ -1,0 +1,12 @@
+Questionable use of curly braces in "c4 9 10 c={sqrt(7.965e-19/abs(v(9,10)))}"
+    Error: undefined symbol in: "sqrt(7.965e-19/abs([v](9,10)))"
+Questionable use of curly braces in "c3 7 5 c={sqrt(8.85e-20/abs(v(7,5)))}"
+    Error: undefined symbol in: "sqrt(8.85e-20/abs([v](7,5)))"
+LTspice 24.0.12 for Windows
+Circuit: .title KiCad schematic
+Start Time: Fri Jun 13 03:24:11 2025
+Error on line 11 : c4 9 10 c=(sqrt(7.965e-19/abs(v(9,10))))
+	 Unable to find definition of model "c"
+Error on line 18 : c3 7 5 c=(sqrt(8.85e-20/abs(v(7,5))))
+	 Unable to find definition of model "c"
+Fatal Error: No analysis request found.

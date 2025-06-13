@@ -1,6 +1,6 @@
 {
-    "name": "AS1",
-    "comment": "Активная спектроскопия. Развязанное зеркало",
+    "name": "AS1-C",
+    "comment": "Активная спектроскопия. Неразвязанное зеркало",
     "Vm":  100,
     "f0":  60e6,
     "p0":  1,
@@ -11,8 +11,8 @@
     "Ae": 0.01,
     "Ag": 0.03,
     "val_R_rf": 50,
-    "val_C_m1": 186.38e-12,
-    "val_C_m2": 204.04e-12,
+    "val_C_m1": 198.77e-12,
+    "val_C_m2": 209.69e-12,
     "val_L_m2": 100e-9,
     "val_R_m":  0.1,
     "val_C_stray": 120e-12,
@@ -21,5 +21,5 @@
     "eps_ne": 5e11,
     "max_iter_ne": 50,
     "verbose_plots": false,
-    "cooling": false
+    "cooling": true
 }
