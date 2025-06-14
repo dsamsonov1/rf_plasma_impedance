@@ -3,6 +3,7 @@ from rfd_plots import *
 from rfd_utils import *
 from rfd_conf import *
 import pandas as pd
+from datetime import datetime
 
 print(f'Config: {cf["name"]}\n{cf["comment"]}')
 
@@ -22,7 +23,7 @@ def calc_discharge():
     print(f'RF excitation: P0={(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50:.2f} [W], f0={cf["f0"] / 1e6:.2f} [MHz], p={cf["p0"]} [Pa] Ar\n')
     print(f'Constant parameters: Vp={cf["Vp"]:.2e} ng={cf["ng"]:.2e} Kiz={Kiz(cf["Te"]):.2e} eps_c={eps_c(cf["Te"]):.2e} eps_e={cf["eps_e"]:.2e} fE={cf["fE"]:.2e} fG={cf["fG"]:.2e}\n\n')
 
-    print(f'=== SIMULATION STARTS ===\n')
+    print('=== SIMULATION STARTS ===\n')
 
     while matching_cond:
 
@@ -114,20 +115,20 @@ def calc_discharge():
 
     pd2 = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
                         'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
-                        'L1 [nH]': [cf["val_L_m2"]/1e-9], 'P0 [W]': [(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50],
+                        'L1 [nH]': [cf["val_L_m2"]/1e-9], 'P0 [W]': [cf["P0"]],
                         'Vp [m^3]': [cf["Vp"]], 'ng [m^-3]': [cf["ng"]], 'Kiz []': [Kiz(cf["Te"])], 'eps_c []': [eps_c(cf["Te"])],
                         'eps_e []': [cf["eps_e"]], 'fE []': [cf["fE"]], 'fG []': [cf["fG"]], 'Vs1 [V]': [Vs1], 'Vs2 [V]': [Vs2],
                         'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Ae [m^2]': [cf["Ae"]], 'Ag [m^2]': [cf["Ag"]],
                         'L_bulk [m]': [cf["l_B"]], 'T0 [K]': [cf["T0"]], 'Rrf [Ω]': [cf['val_R_rf']], 'Rm [Ω]': [cf['val_R_m']],
                         'Cstray [pF]': [cf['val_C_stray']], 'Rstray [Ω]': [cf['val_R_stray']], "Ie01 [A]": [cf["Ie01"]],
-                        "alpha []": [cf["alpha"]], "Iion1 [Ω]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
+                        "alpha []": [cf["alpha"]], "Iion1 [A]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
                         "Rp [Ω]": [cf["Rp"]], "Ie02 [A]": [cf["Ie02"]], "Iion2 [A]": [cf["Iion2"]], "CCs2 []": [cf["CCs2"]],
                         "Vm [V]": [cf["Vm"]]})
 
     return pd.concat([pd1, pd2], axis=1)
 
 sweep_freq = False
-sweep_pressure = False
+sweep_pressure = True#False
 
 df = pd.DataFrame()
 
@@ -159,5 +160,15 @@ else:
     redefineRuntimeParams()
     df = pd.concat([df, calc_discharge()], ignore_index=True)
 
-print(df)
-df.to_excel(f'out/{cf["name"]}.xlsx', index=False)
+dt = datetime.today().strftime('%Y-%m-%d')
+dn = 0
+df.to_excel(f'out/{dt}_{cf["name"]}_{dn:04d}.xlsx', index=False)
+
+fig = plt.figure(figsize=(9, 12))
+gs = fig.add_gridspec(5, hspace=0)
+axs = gs.subplots(sharex=True)
+df.plot(ax=axs[0], x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x', title=f'Ar f0={cf["f0"]/1e6} [MHz] L={cf["l_B"]/1e-2} [cm] Ae={cf["Ae"]*1e4} [cm^2] Ag={cf["Ag"]*1e4} [cm^2] P0={cf["P0"]:.1f} W')
+df.plot(ax=axs[1], x='p0 [Pa]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
+df.plot(ax=axs[2], x='p0 [Pa]', y='ne [m^-3]', marker='x')
+df.plot(ax=axs[3], x='p0 [Pa]', y='Te [eV]', marker='x')
+df.plot(ax=axs[4], x='p0 [Pa]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')

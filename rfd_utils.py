@@ -1,5 +1,6 @@
 import math
 import numpy as np
+#from PySpice.Spice.Netlist import Circuit
 from PySpice.Spice.Netlist import Circuit
 from scipy.fft import rfft, rfftfreq
 from scipy.integrate import trapezoid
@@ -128,10 +129,8 @@ def calcCircuit():
 
     if cf["verbose_plots"]:
         print(f' - VERBOSE: Lp={cf["Lp"] * 1e9:.2f} [nH] Rp={cf["Rp"]:.2f} [Ohm] alpha={cf["alpha"]:.2e}')
-        print(
-            f'  - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
-        print(
-            f'  - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
+        print(f'  - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
+        print(f'  - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
 
     circuit = Circuit('RF discharge impedance')
     circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"], frequency=cf["f0"])
@@ -156,13 +155,13 @@ def calcCircuit():
     circuit.CurrentSource('Bi_g', 9, 10, cf["Iion2"])
     circuit.BehavioralCapacitor('Cs2', 9, 10, capacitance_expression=f'C=\'sqrt({cf["CCs2"]}/abs(v(9,10)))\'')
     circuit.VoltageSource('Viz', 10, 0, 0)
-    circuit.R('R_rl', 5, 11, 0.0001)
 #    circuit.LosslessTransmissionLine('TL', 11, 0, 0, 0, impedance=50, frequency=cf["f0"], normalized_length=0.35)
 #    circuit.SingleLossyTransmissionLine('TL', 5, 0, 0, 0, model='ymod', length=1, raw_spice='\n.MODEL ymod txl R=0.1 L=8.972e-9 G=0 C=0.468e-12 length=22.12')
 #    circuit.LossyTransmission('TL', 5, 0, 0, 0, model='LOSSYMOD', raw_spice='\n.model LOSSYMOD ltra rel=2 r=0.1 g=0 l=8.972e-9 c=0.468e-12 len=12 nosteplimit compactrel=1.0e-3 compactabs=1.0e-14')
 #    circuit.LossyTransmission('TL', 5, 0, 0, 0, model='LOSSYMOD', raw_spice='\n.model LOSSYMOD ltra rel=1 r=1 l=8.972e-9 c=0.468e-12 len=5.53m compactrel=1.0e-2 compactabs=1.0e-8')
 
     if cf["cooling"]:
+        circuit.R('R_rl', 5, 11, 0.0001)
         circuit.L('Lmx', 11, 0, 1e-5)
 
     simulator = circuit.simulator()
@@ -405,3 +404,5 @@ def redefineRuntimeParams():
     cf["Ie02"] = ct["qe"] * cf["ne"] * v_midd_e * cf["Ag"]  # Амплитуда электронного тока у заземленного электрода [А]
     cf["CCs1"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя горячего электрода
     cf["CCs2"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода
+
+    cf["P0"] = (cf["Vm"] / (2 * np.sqrt(2))) ** 2 / cf["val_R_rf"]
