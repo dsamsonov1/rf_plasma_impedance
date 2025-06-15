@@ -209,7 +209,7 @@ def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
     return RL, XL
 
 
-def calcVoltage_Harm(a_analysis, a_u1, a_U2, a_harm):
+def calcVoltage_Harm(a_analysis, a_u1, a_U2, a_harm, a_realflag=True):
     Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
 
     Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
@@ -217,7 +217,10 @@ def calcVoltage_Harm(a_analysis, a_u1, a_U2, a_harm):
     spectraVl = rfft(Vl_2_last_periods) / (2 * cf["sim_periods_div"])
     # freqsl = rfftfreq(Vl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
 
-    return np.real(spectraVl[a_harm])
+    if a_realflag:
+        return np.real(spectraVl[a_harm])
+    else:
+        return np.abs(spectraVl[a_harm])
 
 
 # Расчет элементов согласующего Г-образного четырехполюсника (см. сербов)

@@ -5,6 +5,7 @@ from rfd_utils import *
 from rfd_conf import *
 import pandas as pd
 from datetime import datetime
+import matplotlib.gridspec as gridspec
 
 print(f'Config: {cf["name"]}\n{cf["comment"]}')
 
@@ -118,8 +119,8 @@ def calc_discharge():
 
     pd1 = calcPowerBalance(analysis, out_Rp)
     _, Vs1, Vs2 = calcPlasmaQuantities(analysis, out_Rp)
-    Ubias = calcVoltage_Harm(analysis, '5', '0', 0)
-    Urf = calcVoltage_Harm(analysis, '5', '0', 2)
+    Ubias = calcVoltage_Harm(analysis, '5', '0', 0, True)
+    Urf = calcVoltage_Harm(analysis, '5', '0', 2, False)
 
     print(f'Ubias = {Ubias:.2f} [V]', end='\n')
 
@@ -135,7 +136,7 @@ def calc_discharge():
                         'Cstray [pF]': [cf['val_C_stray']], 'Rstray [Ω]': [cf['val_R_stray']], "Ie01 [A]": [cf["Ie01"]],
                         "alpha []": [cf["alpha"]], "Iion1 [A]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
                         "Rp [Ω]": [cf["Rp"]], "Ie02 [A]": [cf["Ie02"]], "Iion2 [A]": [cf["Iion2"]], "CCs2 []": [cf["CCs2"]],
-                        "Vm [V]": [cf["Vm"]]})
+                        "Vm [V]": [cf["Vm"]], 'jIon1 [uA/cm^2]': [cf['Iion1']*1e6/(cf['Ae']*1e4)], 'jIon2 [uA/cm^2]': [cf['Iion2']*1e6/(cf['Ag']*1e4)]})
 
     return pd.concat([pd1, pd2], axis=1)
 
@@ -181,14 +182,25 @@ else:
 df.to_excel(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}.xlsx', index=False)
 
 
-fig = plt.figure(figsize=(9, 12))
-gs = fig.add_gridspec(6, hspace=0)
-axs = gs.subplots(sharex=True)
-df.plot(ax=axs[0], x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x', title=f'Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} W')
-df.plot(ax=axs[1], x='p0 [Pa]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
-df.plot(ax=axs[2], x='p0 [Pa]', y='ne [m^-3]', marker='x')
-df.plot(ax=axs[3], x='p0 [Pa]', y='Te [eV]', marker='x')
-df.plot(ax=axs[4], x='p0 [Pa]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')
-df.plot(ax=axs[5], x='p0 [Pa]', y=['C1 [pF]', 'C2 [pF]'], marker='x')
-
+fig = plt.figure(figsize=(9, 18))
+gs = gridspec.GridSpec(5, 3, hspace=0)
+#axs = gs.subplots(sharex=True)
+df.plot(ax=fig.add_subplot(gs[0]), x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[1]), x='p0 [Pa]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[2]), x='p0 [Pa]', y='ne [m^-3]', marker='x')
+df.plot(ax=fig.add_subplot(gs[3]), x='p0 [Pa]', y='Te [eV]', marker='x')
+df.plot(ax=fig.add_subplot(gs[4]), x='p0 [Pa]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[5]), x='p0 [Pa]', y=['C1 [pF]', 'C2 [pF]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[6]), x='p0 [Pa]', y=['Re(Zl) [Ohm]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[7]), x='p0 [Pa]', y=['Im(Zl) [Ohm]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[8]), x='p0 [Pa]', y=['Re(Zp) [Ohm]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[9]), x='p0 [Pa]', y=['Im(Zp) [Ohm]'], marker='x')
+df.plot(ax=fig.add_subplot(gs[10]), x='p0 [Pa]', y=['jIon1 [uA/cm^2]', 'jIon2 [uA/cm^2]'], marker='x')
+fig.suptitle(f'{cf['name']}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
+plt.tight_layout()
+plt.show()
 fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')
+
+#TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета
+#TODO Сделать PDF отчет, включающий графики каждой итерации для контроля качества модели
+#TODO Сделать расчет скорости и селективности травления через оценку IEDF
