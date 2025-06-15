@@ -27,6 +27,7 @@ def loadConf(a_cfname):
     o_cf["p0"] = data["p0"]
     o_cf["T0"] = data["T0"]
     o_cf["ne"] = data["ne"]
+    o_cf["ne_init"] = data["ne"]
     o_cf["beta"] = data["beta"]
     o_cf["l_B"] = data["l_B"]
     o_cf["Ae"] = data["Ae"]
@@ -34,6 +35,8 @@ def loadConf(a_cfname):
     o_cf["val_R_rf"] = data["val_R_rf"]
     o_cf["val_C_m1"] = data["val_C_m1"]
     o_cf["val_C_m2"] = data["val_C_m2"]
+    o_cf["C_m1_init"] = data["val_C_m1"]
+    o_cf["C_m2_init"] = data["val_C_m2"]
     o_cf["val_L_m2"] = data["val_L_m2"]
     o_cf["val_R_m"] = data["val_R_m"]
     o_cf["val_C_stray"] = data["val_C_stray"]
@@ -51,7 +54,7 @@ def loadConf(a_cfname):
 # 2. Загружаем параметры рабочей точки ВЧ разряда
 #################
 
-cfname = 'pc1'
+cfname = 'as1'
 
 cf = loadConf(cfname)
 

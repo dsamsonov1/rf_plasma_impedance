@@ -1,12 +1,15 @@
 import math
 import numpy as np
-#from PySpice.Spice.Netlist import Circuit
 from PySpice.Spice.Netlist import Circuit
 from scipy.fft import rfft, rfftfreq
 from scipy.integrate import trapezoid
 from rfd_conf import *
 from scipy import optimize
 import pandas as pd
+import os
+import re
+from datetime import datetime
+import sys
 
 
 ##############
@@ -161,8 +164,8 @@ def calcCircuit():
 #    circuit.LossyTransmission('TL', 5, 0, 0, 0, model='LOSSYMOD', raw_spice='\n.model LOSSYMOD ltra rel=1 r=1 l=8.972e-9 c=0.468e-12 len=5.53m compactrel=1.0e-2 compactabs=1.0e-8')
 
     if cf["cooling"]:
-        circuit.R('R_rl', 5, 11, 0.0001)
-        circuit.L('Lmx', 11, 0, 1e-5)
+        circuit.R('R_rl', 5, 11, 0.01)
+        circuit.L('Lmx', 11, 0, 5e-6)
 
     simulator = circuit.simulator()
 #    simulator = circuit.simulator(simulator='ngspice-shared')
@@ -269,7 +272,7 @@ def calcPowerBalance(a_analysis, a_Rp):
                          cf["num_periods_for_integration"]) / cf["val_R_stray"]
 
     print(
-        f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray = {P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
+        f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray={P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
 
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2)
     Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2)
@@ -336,10 +339,13 @@ def calcPlasmaQuantities(a_analysis, a_Rp):
 def printSimulationResults(a_analysis, a_out_Rp):
     print(f'=== SIMULATION COMPLETE ===\n')
 
-    calcPowerBalance(a_analysis, a_out_Rp)
+    #calcPowerBalance(a_analysis, a_out_Rp)
 
 
 def redefineRuntimeParams():
+
+    cf["ne"] = cf["ne_init"] 
+
     #################
     # 3. Вычисляемые величины №1
     #################
@@ -370,7 +376,7 @@ def redefineRuntimeParams():
 
     sol = optimize.root_scalar(dfr, bracket=[1, 7], x0=3, x1=5, xtol=1e-3, method='secant')
     cf["Te"] = sol.root
-    print(f'Te={cf["Te"]:.2f} [eV] ne={cf["ne"]:.2e}')
+    print(f'Te={cf["Te"]:.2f} [eV], initial ne={cf["ne"]:.2e}')
 
     ##############
     # 6. Определение цены ионизации газа
@@ -406,3 +412,102 @@ def redefineRuntimeParams():
     cf["CCs2"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода
 
     cf["P0"] = (cf["Vm"] / (2 * np.sqrt(2))) ** 2 / cf["val_R_rf"]
+    
+    cf["val_C_m1"] = cf["C_m1_init"] 
+    cf["val_C_m2"] = cf["C_m2_init"] 
+
+def is_valid_date(date_str):
+    """
+    Check if the provided date string is a valid date in the format YYYY-MM-DD.
+    """
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+def get_next_available_aaaa(base_directory, bb):
+    """
+    Checks for subdirectories matching the pattern AAAA_BB_YYYY-MM-DD
+    and returns the next available AAAA. If no existing matches are found, returns 0.
+    Raises an error if the next AAAA is unavailable (i.e., exceeds 9999).
+    
+    :param base_directory: The directory to check for subdirectories.
+    :param bb: The arbitrary string identifier to match in the directory names.
+    :return: The next available AAAA as an integer.
+    :raises ValueError: If the next AAAA exceeds 9999.
+    """
+    # Define the regex pattern to match the required directory format
+    regex = re.compile(rf"^(\d{{4}})_{re.escape(bb)}_(\d{{4}})-(\d{{2}})-(\d{{2}})$")
+
+    existing_a = []
+
+    # Traverse through subdirectories in the given base directory
+    for root, dirs, files in os.walk(base_directory):
+        for dir_name in dirs:
+            match = regex.match(dir_name)
+            if match:
+                aaaa = int(match.group(1))  # Extract AAAA as an integer
+                date_str = f"{match.group(2)}-{match.group(3)}-{match.group(4)}"  # YYYY-MM-DD
+                if is_valid_date(date_str):
+                    existing_a.append(aaaa)
+
+    # If no existing AAAA found, return 0
+    if not existing_a:
+        return 0
+
+    # Find the next available AAAA
+    max_aaaa = max(existing_a)
+    next_aaaa = max_aaaa + 1
+    
+    # Ensure next_aaaa is a 4-digit number (i.e., less than 10000)
+    if next_aaaa < 10000:
+        return next_aaaa
+    else:
+        raise ValueError("No available AAAA left. Maximum limit reached.")
+
+
+def create_subdirectory(base_directory, aaaa, bb):
+    """
+    Creates a subdirectory with the name format AAAA-BB_YYYY-MM-DD.
+    
+    :param base_directory: The directory in which to create the subdirectory.
+    :param aaaa: A 4-digit integer (leading zeros) as a string.
+    :param bb: An arbitrary string identifier.
+    :raises ValueError: If AAAA is not a valid 4-digit integer or if the directory creation fails.
+    """
+    # Validate AAAA
+    if not (isinstance(aaaa, int) and 0 <= aaaa < 10000):
+        raise ValueError("AAAA must be a 4-digit integer (0-9999).")
+    
+    # Format AAAA with leading zeros
+    formatted_aaaa = f"{aaaa:04d}"
+    
+    # Get the current date in YYYY-MM-DD format
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Create the directory name
+    directory_name = f"{formatted_aaaa}_{bb}_{current_date}"
+    
+    # Create the full path for the new subdirectory
+    full_path = os.path.join(base_directory, directory_name)
+    
+    # Create the subdirectory
+    try:
+        os.makedirs(full_path)
+        print(f"Subdirectory created: {full_path}")
+        return full_path, current_date
+    except Exception as e:
+        raise ValueError(f"Failed to create subdirectory: {e}")
+        
+class Logger:
+    def __init__(self, filename):
+        self.terminal = sys.stdout  # Save a reference to the original stdout
+        self.log_file = open(filename, 'a')  # Open the log file in append mode
+
+    def write(self, message):
+        self.terminal.write(message)  # Write to the terminal (console)
+        self.log_file.write(message)   # Write to the log file
+
+    def flush(self):
+        pass  # This is needed for Python 3 compatibility

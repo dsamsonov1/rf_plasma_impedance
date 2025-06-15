@@ -1,4 +1,5 @@
 import sys
+import os
 from rfd_plots import *
 from rfd_utils import *
 from rfd_conf import *
@@ -20,6 +21,7 @@ def calc_discharge():
     matching_cond = True
     # print(f'mc={np.abs(val_C_m1 - val_C_m1_prev) > 5e-12 and np.abs(val_C_m2 - val_C_m2_prev) > 5e-12}', end=' ')
 
+    print('=== NEW TASK STARTS ===\n')
     print(f'RF excitation: P0={(cf["Vm"] / (2 * np.sqrt(2))) ** 2 / 50:.2f} [W], f0={cf["f0"] / 1e6:.2f} [MHz], p={cf["p0"]} [Pa] Ar\n')
     print(f'Constant parameters: Vp={cf["Vp"]:.2e} ng={cf["ng"]:.2e} Kiz={Kiz(cf["Te"]):.2e} eps_c={eps_c(cf["Te"]):.2e} eps_e={cf["eps_e"]:.2e} fE={cf["fE"]:.2e} fG={cf["fG"]:.2e}\n\n')
 
@@ -79,14 +81,22 @@ def calc_discharge():
 
                     print(f'   - OUT: Z_m=({Rmm:.2f}, {Xmm:.2f}) [Ohm] -> {np.abs(complex(Rmm, Xmm)):.2f}*exp(j*{np.degrees(np.angle(complex(Rmm, Xmm))):.2f}deg)')
 
+                    plot_UI(analysis, out_Rp)
+
                     if matching_flag:
                         (cf["val_C_m2"], cf["val_C_m1"]) = calcMatchingNetwork(Rmm, Xmm, 2 * np.pi * cf["f0"], 50)
-                        print(f'-- dCm1={np.abs(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={np.abs(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]', end=' ')
 
                         matching_cond = np.abs(cf["val_C_m1"] - val_C_m1_prev) > 1e-12 or np.abs(cf["val_C_m2"] - val_C_m2_prev) > 1e-12
+                        
+                        beta2 = 0.8
+                        cf["val_C_m1"] = val_C_m1_prev + beta2 * (cf["val_C_m1"] - val_C_m1_prev)
+                        cf["val_C_m2"] = val_C_m2_prev + beta2 * (cf["val_C_m2"] - val_C_m2_prev)
+
+                        print(f'-- dCm1={np.abs(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={np.abs(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]', end=' ')
 
                         if matching_cond:
                             print(f'<- NEW MATCHING VALUES: C1={cf["val_C_m1"] * 1e12:.2f} C2={cf["val_C_m2"] * 1e12:.2f}\n')
+                            
                             if cf["val_C_m1"] <= 0 or cf["val_C_m2"] <= 0:
                                 sys.exit("Wrong C1 or C2 value. STOP.")
                         else:
@@ -111,7 +121,9 @@ def calc_discharge():
     Ubias = calcVoltage_Harm(analysis, '5', '0', 0)
     Urf = calcVoltage_Harm(analysis, '5', '0', 2)
 
-    print(f'Ubias = {Ubias:.2f}', end='\n')
+    print(f'Ubias = {Ubias:.2f} [V]', end='\n')
+
+    print('=== TASK FINISHED ===\n\n')
 
     pd2 = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
                         'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
@@ -131,6 +143,12 @@ sweep_freq = False
 sweep_pressure = True#False
 
 df = pd.DataFrame()
+
+cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'])
+cf['out_path'], cf['current_date'] = create_subdirectory('out/', cf['next_aaaa'], cf['name'])
+
+# Redirect stdout to the Logger
+sys.stdout = Logger(f'{cf['out_path']}/output.log')
 
 if sweep_freq:
     #    freqs = [13.56e6, 27e6, 40e6, 60e6, 80e6]
@@ -160,15 +178,17 @@ else:
     redefineRuntimeParams()
     df = pd.concat([df, calc_discharge()], ignore_index=True)
 
-dt = datetime.today().strftime('%Y-%m-%d')
-dn = 0
-df.to_excel(f'out/{dt}_{cf["name"]}_{dn:04d}.xlsx', index=False)
+df.to_excel(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}.xlsx', index=False)
+
 
 fig = plt.figure(figsize=(9, 12))
-gs = fig.add_gridspec(5, hspace=0)
+gs = fig.add_gridspec(6, hspace=0)
 axs = gs.subplots(sharex=True)
-df.plot(ax=axs[0], x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x', title=f'Ar f0={cf["f0"]/1e6} [MHz] L={cf["l_B"]/1e-2} [cm] Ae={cf["Ae"]*1e4} [cm^2] Ag={cf["Ag"]*1e4} [cm^2] P0={cf["P0"]:.1f} W')
+df.plot(ax=axs[0], x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x', title=f'Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} W')
 df.plot(ax=axs[1], x='p0 [Pa]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
 df.plot(ax=axs[2], x='p0 [Pa]', y='ne [m^-3]', marker='x')
 df.plot(ax=axs[3], x='p0 [Pa]', y='Te [eV]', marker='x')
 df.plot(ax=axs[4], x='p0 [Pa]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')
+df.plot(ax=axs[5], x='p0 [Pa]', y=['C1 [pF]', 'C2 [pF]'], marker='x')
+
+fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')
