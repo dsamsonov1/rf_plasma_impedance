@@ -90,8 +90,9 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     full_abs = np.abs(_spectra)
     full_angle = np.angle(_spectra)
 
-    idxHarm = (
-                      a_nHarm + 1) * num_periods_for_spectra  # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
+    # Индекс в массиве результатов fft, чтобы вырезать (немного больше) N гармоник
+    idxHarm = (a_nHarm + 1) * num_periods_for_spectra
+    
     reduced_spectra = _spectra[0:idxHarm]
 
     reduced_freqs = freqsMHz[0:idxHarm]
@@ -110,10 +111,8 @@ def get_spectra(a_Data, a_nHarm=10, num_periods_for_spectra=10):
     true_abs = reduced_abs[idxrange]
     true_angle = reduced_angle[idxrange]
 
-    return (
-        _spectra, full_abs, full_angle, _freqs, freqsMHz, reduced_freqs, reduced_abs, reduced_angle, waste_freqs,
-        waste_abs,
-        waste_angle, true_freqs, true_abs, true_angle)
+    return (_spectra, full_abs, full_angle, _freqs, freqsMHz, reduced_freqs, reduced_abs, reduced_angle, waste_freqs,
+        waste_abs, waste_angle, true_freqs, true_abs, true_angle)
 
 
 # Пытаемся найти Te как корень баланса частиц Vp*ng*Kiz(Te)-(Ae + Ag)*u_Bohm(Te) на отрезке [1-7] eV
@@ -127,13 +126,16 @@ def eps_c_novec(a_Te):
 
 eps_c = np.vectorize(eps_c_novec, otypes=[float])
 
+##########
+# 7. Определяем и считаем цепь
+##########
 
 def calcCircuit():
 
     if cf["verbose_plots"]:
         print(f' - VERBOSE: Lp={cf["Lp"] * 1e9:.2f} [nH] Rp={cf["Rp"]:.2f} [Ohm] alpha={cf["alpha"]:.2e}')
-        print(f'  - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
-        print(f'  - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
+        print(f' - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
+        print(f' - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
 
     circuit = Circuit('RF discharge impedance')
     circuit.SinusoidalVoltageSource('V0', 1, 0, amplitude=cf["Vm"], frequency=cf["f0"])
@@ -178,16 +180,64 @@ def calcCircuit():
 #    print(circuit) # Можно напечатать получившийся netlist для проверки
 
 #    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
-    return simulator.transient(step_time=cf["Tf"] / 100, end_time=cf["tmax_sim"]), cf["Rp"]
+    cf["analysis"] = simulator.transient(step_time=cf["Tf"] / cf['ngspice_sim_step_period_frac'], end_time=cf["tmax_sim"])
+
+
+##########
+# 8. Делаем итерации по ne
+##########
+
+def calc_dischargePoint():
+    
+    ne_new = -2 * cf["eps_ne"]
+    iter_no = 0
+    
+    while np.abs(cf["ne"] - ne_new) > cf["eps_ne"]:
+    
+        if iter_no > 0:
+            cf["ne"] = ne_new
+    
+        if iter_no < cf["max_iter_ne"]:
+            iter_no = iter_no + 1
+    
+            print(f'  -- ne #{iter_no: =2}:', end=' ')
+    
+            calcCircuit()
+            calcPlasmaQuantities(postprocess=False)
+    
+            ##############
+            # Определение ne
+            ##############
+    
+            Pguess = cf["ne"] * cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * ct["qe"] * \
+                     (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(cf["_Vs1"]) + cf["fG"] * np.abs(cf["_Vs2"]) + cf["Te"] / 2)
+    
+            ne_new = cf["Ppl"] / (cf["Vp"] * cf["ng"] * Kiz(cf["Te"]) * ct["qe"] * \
+                            (eps_c(cf["Te"]) + cf["eps_e"] + cf["fE"] * np.abs(cf["_Vs1"]) + cf["fG"] * np.abs(cf["_Vs2"]) + cf["Te"] / 2))
+    
+            # "регуляризация" для улучшения сходимости итераций ne (suggested by G. Marchiy)
+            ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
+    
+            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3]', end=' ')
+    
+            if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
+                print(f'dne={np.abs(ne_new - cf["ne"]):.2e} <- ne CONVERGED')
+                return cf['gamma']
+    
+            else:
+                print(f'dne={np.abs(ne_new - cf["ne"]):.2e} --', end='\n')
+    
+        else:
+            sys.exit("ne NOT CONVERGED. ne ITERATIONS LIMIT REACHED. STOP.")
 
 
 ##############
 # Определение вспомогательных функций
 ##############
 
-def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
-    Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
-    Il_raw = getU(a_I1, a_I2, a_analysis) / a_Rval  # Il
+def calcImpedance_1Harm(a_u1, a_U2, a_I1, a_I2, a_Rval):
+    Vl_raw = getU(a_u1, a_U2, cf["analysis"])  # Vl
+    Il_raw = getU(a_I1, a_I2, cf["analysis"]) / a_Rval  # Il
 
     Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
     Il_2_last_periods = extract_N_periods(Il_raw, 1, 2)
@@ -209,8 +259,8 @@ def calcImpedance_1Harm(a_analysis, a_u1, a_U2, a_I1, a_I2, a_Rval):
     return RL, XL
 
 
-def calcVoltage_Harm(a_analysis, a_u1, a_U2, a_harm, a_realflag=True):
-    Vl_raw = getU(a_u1, a_U2, a_analysis)  # Vl
+def calcVoltage_Harm(a_u1, a_U2, a_harm, a_realflag=True):
+    Vl_raw = getU(a_u1, a_U2, cf["analysis"])  # Vl
 
     Vl_2_last_periods = extract_N_periods(Vl_raw, 1, 2)
 
@@ -247,102 +297,70 @@ def cmn2(a_RL, a_XL, a_w):
 
     return (C1, C2)
 
+def calcPower_Mean(a_U1, a_U2, a_I1, a_I2, a_Rval, total=True):
 
-def calcPowerBalance(a_analysis, a_Rp):
-    time_raw = np.array(a_analysis.time)
+    V_raw = getU(a_U1, a_U2, cf["analysis"])  # Vpl
+    I_raw = getU(a_I1, a_I2, cf["analysis"]) / a_Rval  # Ipl
 
-    Vpl_raw = getU('5', '0', a_analysis)  # Vpl
-    Ipl_raw = getU('8', '9', a_analysis) / a_Rp  # Ipl
-
-    t_integration = extract_N_periods(time_raw, 1, cf["num_periods_for_integration"])
+    t_integration = extract_N_periods(np.array(cf["analysis"].time), 1, cf["num_periods_for_integration"])
     # data[-(num_periods_for_integration+1)*sim_periods_div:-1*sim_periods_div]
 
-    Vpl_integration = extract_N_periods(Vpl_raw, 1, cf["num_periods_for_integration"])
-    Ipl_integration = extract_N_periods(Ipl_raw, 1, cf["num_periods_for_integration"])
-    Ppl_integration = np.multiply(Vpl_integration, Ipl_integration)
+    V_integration = extract_N_periods(V_raw, 1, cf["num_periods_for_integration"])
+    I_integration = extract_N_periods(I_raw, 1, cf["num_periods_for_integration"])
+    P_integration = np.multiply(V_integration, I_integration)
 
-    Ppl = get_mean(t_integration, Ppl_integration, cf["num_periods_for_integration"])
+    return get_mean(t_integration, P_integration, cf["num_periods_for_integration"])
 
-    VRm_raw = getU('4', '5', a_analysis)  # VRm
-    VRstray_raw = getU('6', '0', a_analysis)  # VRm
-
-    VRm_integration = extract_N_periods(VRm_raw, 1, cf["num_periods_for_integration"])
-    P_R_m = get_mean(t_integration, np.multiply(VRm_integration, VRm_integration),
-                     cf["num_periods_for_integration"]) / cf["val_R_m"]
-
-    VRstray_integration = extract_N_periods(VRstray_raw, 1, cf["num_periods_for_integration"])
-    P_R_stray = get_mean(t_integration, np.multiply(VRstray_integration, VRstray_integration),
-                         cf["num_periods_for_integration"]) / cf["val_R_stray"]
-
-    print(
-        f'Ppl={Ppl:.2f} [W], PRm={P_R_m:.2f} [W], PRstray={P_R_stray:.2f} [W], TOTAL={Ppl + P_R_m + P_R_stray:.2f} [W]')
-
-    Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2)
-    Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2)
-
-    spectraVpl = rfft(Vpl_2_last_periods) / (2 * cf["sim_periods_div"])
-    spectraIpl = rfft(Ipl_2_last_periods) / (2 * cf["sim_periods_div"])
-    freqsl = rfftfreq(Vpl_2_last_periods.size, d=cf["Tf"] / cf["sim_periods_div"])
-
-    UUpl = abs(spectraVpl)[2]
-    IIpl = abs(spectraIpl)[2]
-
-    Uapl = np.angle(spectraVpl)[2]
-    Iapl = np.angle(spectraIpl)[2]
-
-    Rpl = UUpl / IIpl * np.cos(Uapl - Iapl)
-    #    XL=UU/II*np.sin(Ua-Ia)+2*np.pi*config["f0"]*1500e-9
-    Xpl = UUpl / IIpl * np.sin(Uapl - Iapl)
-
-    # Импеданс на входе C-C звена для проверки согласования (похоже это не работает правильно
-    # т.к. 50 Ом в этой точке будет если это располовиненная цепь - разобраться
-    (Rii, Xii) = calcImpedance_1Harm(a_analysis, '2', '0', '4', '5', cf["val_R_m"])
-
-    # Импеданс на входе C-C звена для проверки согласования (похоже это не работает правильно
-    # т.к. 50 Ом в этой точке будет если это располовиненная цепь - разобраться
-    (Rll, Xll) = calcImpedance_1Harm(a_analysis, '5', '0', '4', '5', cf["val_R_m"])
-
-    print(f'Zi=({Rii:.2f}, {Xii:.2f}) [Ohm], Zl=({Rll:.2f}, {Xll:.2f}) [Ohm], Zp=({Rpl:.2f}, {Xpl:.2f}) [Ohm]')
-
-    return pd.DataFrame({'Re(Zi) [Ohm]': [Rii], 'Im(Zi) [Ohm]': [Xii],
-                         'Re(Zl) [Ohm]': [Rll], 'Im(Zl) [Ohm]': [Xll],
-                         'Re(Zp) [Ohm]': [Rpl], 'Im(Zp) [Ohm]': [Xpl],
-                         'Pp [W]': [Ppl], 'PRm [W]': P_R_m, 'PRstray [W]': P_R_stray,
-                         'Ptot [W]': Ppl + P_R_m + P_R_stray})
+def calcVoltage_Mean(a_U1, a_U2):
+    
+    t_integration = extract_N_periods(np.array(cf["analysis"].time), 1, cf["num_periods_for_integration"])
+    V_raw = getU(a_U1, a_U2, cf["analysis"])  # Vs1
+    V_integration = extract_N_periods(V_raw, 1, cf["num_periods_for_integration"])
+    return get_mean(t_integration, V_integration, cf["num_periods_for_integration"])
 
 
-def calcPlasmaQuantities(a_analysis, a_Rp):
-    time_raw = np.array(a_analysis.time)
-    Vpl_raw = getU('5', '0', a_analysis)  # Vpl
-    Ipl_raw = getU('8', '9', a_analysis) / a_Rp  # Ipl
-    Vs1_raw = getU('5', '7', a_analysis)  # Vs1
-    Vs2_raw = getU('9', '10', a_analysis)  # Vs2
+def calcPlasmaQuantities(postprocess=False):
+    
+    cf["Ppl"] = calcPower_Mean('5', '0', '8', '9', cf['Rp'])
+    cf["_Vs1"] = calcVoltage_Mean('5', '7')
+    cf["_Vs2"] = calcVoltage_Mean('9', '10')
+    (Rii, Xii) = calcImpedance_1Harm('2', '0', '1', '2', cf["val_R_rf"])
+    Zi = complex(Rii, Xii)
+    cf["gamma"] = abs((Zi-cf["val_R_rf"])/(Zi+cf["val_R_rf"]))    
 
-    t_integration = extract_N_periods(time_raw, 1, cf["num_periods_for_integration"])
+    if postprocess:
+        P_R_m = calcPower_Mean('4', '5', '4', '5', cf['val_R_m'])
+        P_R_stray = calcPower_Mean('6', '0', '6', '0', cf['val_R_stray'])
+        (Rpl, Xpl) = calcImpedance_1Harm('5', '0', '8', '9', cf['Rp'])
+        (Rll, Xll) = calcImpedance_1Harm('5', '0', '4', '5', cf["val_R_m"])
+        Ubias = calcVoltage_Harm('5', '0', 0, a_realflag=True)
+        Urf = calcVoltage_Harm('5', '0', 2, a_realflag=False)
 
-    Vpl_integration = extract_N_periods(Vpl_raw, 1, cf["num_periods_for_integration"])
-    Ipl_integration = extract_N_periods(Ipl_raw, 1, cf["num_periods_for_integration"])
+        if cf["verbose_plots"]:
+            print(f'  - VERBOZE: Vs_e={np.abs(cf['_Vs1']):.2f} [V] Vs_g={np.abs(cf['_Vs2']):.2f} [V]')
 
-    Ppl_integration = np.multiply(Vpl_integration, Ipl_integration)
+        cf["pd"] = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
+                                 'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
+                                 'L1 [nH]': [cf["val_L_m2"]/1e-9], 'P0 [W]': [cf["P0"]],
+                                 'Vp [m^3]': [cf["Vp"]], 'ng [m^-3]': [cf["ng"]], 'Kiz []': [Kiz(cf["Te"])], 'eps_c []': [eps_c(cf["Te"])],
+                                 'eps_e []': [cf["eps_e"]], 'fE []': [cf["fE"]], 'fG []': [cf["fG"]], 'Ae [m^2]': [cf["Ae"]], 'Ag [m^2]': [cf["Ag"]],
+                                 'L_bulk [m]': [cf["l_B"]], 'T0 [K]': [cf["T0"]], 'Rrf [Ω]': [cf['val_R_rf']], 'Rm [Ω]': [cf['val_R_m']],
+                                 'Cstray [pF]': [cf['val_C_stray']], 'Rstray [Ω]': [cf['val_R_stray']], "Ie01 [A]": [cf["Ie01"]],
+                                 "alpha []": [cf["alpha"]], "Iion1 [A]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
+                                 "Rp [Ω]": [cf["Rp"]], "Ie02 [A]": [cf["Ie02"]], "Iion2 [A]": [cf["Iion2"]], "CCs2 []": [cf["CCs2"]],
+                                 "Vm [V]": [cf["Vm"]], 'jIon1 [uA/cm^2]': [cf['Iion1']*1e6/(cf['Ae']*1e4)], 'jIon2 [uA/cm^2]': [cf['Iion2']*1e6/(cf['Ag']*1e4)],
+                                 'Re(Zi) [Ohm]': [Rii], 'Im(Zi) [Ohm]': [Xii], 'Re(Zl) [Ohm]': [Rll], 'Im(Zl) [Ohm]': [Xll], 'Re(Zp) [Ohm]': [Rpl], 'Im(Zp) [Ohm]': [Xpl],
+                                 'Pp [W]': [cf["Ppl"]], 'PRm [W]': [P_R_m], 'PRstray [W]': [P_R_stray], 'Ptot [W]': [cf["Ppl"] + P_R_m + P_R_stray],
+                                 'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Vs1 [V]': [cf["_Vs1"]], 'Vs2 [V]': [cf["_Vs2"]],
+                                 'G': [cf['gamma']], 'G2': [cf['gamma']^2]})
 
-    Ppl = get_mean(t_integration, Ppl_integration, cf["num_periods_for_integration"])
 
-    Vs1_integration = extract_N_periods(Vs1_raw, 1, cf["num_periods_for_integration"])
-    Vs2_integration = extract_N_periods(Vs2_raw, 1, cf["num_periods_for_integration"])
-
-    _Vs1 = get_mean(t_integration, Vs1_integration, cf["num_periods_for_integration"])
-    _Vs2 = get_mean(t_integration, Vs2_integration, cf["num_periods_for_integration"])
-
-    if cf["verbose_plots"]:
-        print(f'  - VERBOZE: Vs_e={np.abs(_Vs1):.2f} [V] Vs_g={np.abs(_Vs2):.2f} [V]')
-
-    return Ppl, _Vs1, _Vs2
-
-
-def printSimulationResults(a_analysis, a_out_Rp):
+def printSimulationResults():
+    calcPlasmaQuantities(postprocess=True)
+    print(f'Ppl={cf['pd']['Pp [W]'].values[0]:.2f} [W], PRm={cf['pd']['PRm [W]'].values[0]:.2f} [W], PRstray={cf['pd']['PRstray [W]'].values[0]:.2f} [W], TOTAL={cf['pd']['Ptot [W]'].values[0]:.2f} [W]')
+    print(f'Zi=({cf['pd']['Re(Zi) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zi) [Ohm]'].values[0]:.2f}) [Ohm], Zl=({cf['pd']['Re(Zl) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zl) [Ohm]'].values[0]:.2f}) [Ohm], Zp=({cf['pd']['Re(Zp) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zp) [Ohm]'].values[0]:.2f}) [Ohm]')
+    print(f'G={cf['pd']['G'].values[0]:.2f}, G^2={cf['pd']['G2'].values[0]:.2f}')
     print(f'=== SIMULATION COMPLETE ===\n')
-
-    #calcPowerBalance(a_analysis, a_out_Rp)
 
 
 def redefineRuntimeParams():
@@ -372,6 +390,7 @@ def redefineRuntimeParams():
     # Это и будет критерий наступления установившегося режима
     cf["num_periods_for_integration"] = 50
     cf["first_steady_period"] = cf["num_periods_sim"] - cf["num_periods_for_integration"]
+    cf['ngspice_sim_step_period_frac'] = 100
 
     ##############
     # 5. Определение Te
@@ -417,7 +436,23 @@ def redefineRuntimeParams():
     cf["P0"] = (cf["Vm"] / (2 * np.sqrt(2))) ** 2 / cf["val_R_rf"]
     
     cf["val_C_m1"] = cf["C_m1_init"] 
-    cf["val_C_m2"] = cf["C_m2_init"] 
+    cf["val_C_m2"] = cf["C_m2_init"]
+    
+def sample_deviatedC(initial_values, percentages, N, linear=False, seed=None):
+
+    rangeC1 = (initial_values[0] * (1 - percentages[0]/100), initial_values[0])
+    rangeC2 = (initial_values[1] * (1 - percentages[1]/100), initial_values[1])
+
+    if linear:
+        samplesC1 = np.linspace(rangeC1[0], rangeC1[1], N)
+        samplesC2 = np.linspace(rangeC2[0], rangeC2[1], N)
+    else:
+        if seed is not None:
+            np.random.seed(seed)
+        samplesC1 = np.random.uniform(low=rangeC1[0], high=rangeC1[1], size=N)
+        samplesC2 = np.random.uniform(low=rangeC2[0], high=rangeC2[1], size=N)
+        
+    return samplesC1, samplesC2
 
 def is_valid_date(date_str):
     """
@@ -502,6 +537,7 @@ def create_subdirectory(base_directory, aaaa, bb):
         return full_path, current_date
     except Exception as e:
         raise ValueError(f"Failed to create subdirectory: {e}")
+        
         
 class Logger:
     def __init__(self, filename):

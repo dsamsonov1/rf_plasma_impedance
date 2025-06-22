@@ -3,6 +3,7 @@ import matplotlib
 from rfd_conf import cf
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from rfd_utils import *
 
 def plot_Te():
@@ -40,23 +41,23 @@ def plot_K():
     plt.show()
 
 
-def plot_UI(a_analysis, a_Rp):
+def plot_UI():
 
     ##### Извлекаем интересующие токи и напряжения
 
-    time_raw = np.array(a_analysis.time)
+    time_raw = np.array(cf['analysis'].time)
 
-    Vpl_raw = getU('5', '0', a_analysis)  # Vpl
-    Ipl_raw = getU('8', '9', a_analysis) / a_Rp  # Ipl
-    V_R_rf_raw = getU('2', '1', a_analysis)  # Vrf
+    Vpl_raw = getU('5', '0', cf['analysis'])  # Vpl
+    Ipl_raw = getU('8', '9', cf['analysis']) / cf['Rp']  # Ipl
+    V_R_rf_raw = getU('2', '1', cf['analysis'])  # Vrf
     Irf_raw = V_R_rf_raw / cf["val_R_rf"]  # Irf
-    Vl_raw = getU('3', '0', a_analysis)  # Vl
-    Il_raw = getU('4', '5', a_analysis) / cf["val_R_m"]  # Il
-    Vs1_raw = getU('5', '7', a_analysis)  # Vs1
-    Vs2_raw = getU('9', '10', a_analysis)  # Vs2
-    V_R_rf_raw = getU('2', '1', a_analysis)  # Vrf
-    VRm_raw = getU('4', '5', a_analysis)  # VRm
-    VRstray_raw = getU('6', '0', a_analysis)  # VRm
+    Vl_raw = getU('3', '0', cf['analysis'])  # Vl
+    Il_raw = getU('4', '5', cf['analysis']) / cf["val_R_m"]  # Il
+    Vs1_raw = getU('5', '7', cf['analysis'])  # Vs1
+    Vs2_raw = getU('9', '10', cf['analysis'])  # Vs2
+    V_R_rf_raw = getU('2', '1', cf['analysis'])  # Vrf
+    VRm_raw = getU('4', '5', cf['analysis'])  # VRm
+    VRstray_raw = getU('6', '0', cf['analysis'])  # VRm
 
     # Строим ток и напряжение на плазме (2 периода)
 
@@ -70,7 +71,7 @@ def plot_UI(a_analysis, a_Rp):
     Vs1_2_last_periods = extract_N_periods(Vs1_raw, 1, 2)
     Vs2_2_last_periods = extract_N_periods(Vs2_raw, 1, 2)
 
-
+    # Графики Upl, Ipl на одной картинке
     fig = plt.figure(figsize=(9, 10))
     ax1 = fig.add_subplot(1, 1, 1)
 
@@ -90,6 +91,7 @@ def plot_UI(a_analysis, a_Rp):
     plt.show()
     
     
+    # Графики переходного процесса для контроля сходимости
     fig = plt.figure(figsize=(9, 10))
     ax1 = fig.add_subplot(1, 1, 1)
     ax1.plot(time_raw / cf["Tf"], Vpl_raw, label='Vp', alpha=0.5)  # Обзорный график для определения установившегося режима
@@ -101,6 +103,7 @@ def plot_UI(a_analysis, a_Rp):
     _ = ax1.set_xlabel('Periods count')
     plt.show()
     
+    # Графики Vs1, Vs2 на одной картинке
     fig = plt.figure(figsize=(9, 10))
     ax1 = fig.add_subplot(1, 1, 1)
     ax1.plot(time_2_last_periods, Vs1_2_last_periods, label='Vs1')
@@ -175,6 +178,7 @@ def plot_UI(a_analysis, a_Rp):
         axs[1].grid(axis='y', linestyle=':')
         axs[1].legend()
 
+    # Спектры Upl, Ipl на одной картинке
     barWidth = 6
     fig = plt.figure(figsize=(9, 10))
     axs = fig.add_subplot(1, 1, 1)
@@ -196,7 +200,9 @@ def plot_UI(a_analysis, a_Rp):
     axs.legend()
     _ = axs.set_xticks([x + 0.5 * barWidth for x in true_freqs], np.round(true_freqs, 2))
     plt.show()
-    
+
+'''    
+    # Спектр импеданса
     fig = plt.figure(figsize=(9, 10))
     axs = fig.add_subplot(1, 1, 1)
     axs.bar(true_freqs, Vpl_true_abs / Ipl_true_abs, width=barWidth)
@@ -205,4 +211,24 @@ def plot_UI(a_analysis, a_Rp):
     axs.set_ylabel('Abs impedance [Ohm]')
     _ = axs.set_xlabel('Frequency [MHz]')
     plt.show()
+'''
 
+def plot_sweepResult(a_df):
+    fig = plt.figure(figsize=(9, 18))
+    gs = gridspec.GridSpec(5, 3, hspace=0)
+    #axs = gs.subplots(sharex=True)
+    a_df.plot(ax=fig.add_subplot(gs[0]), x='p0 [Pa]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[1]), x='p0 [Pa]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[2]), x='p0 [Pa]', y='ne [m^-3]', marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[3]), x='p0 [Pa]', y='Te [eV]', marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[4]), x='p0 [Pa]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[5]), x='p0 [Pa]', y=['C1 [pF]', 'C2 [pF]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[6]), x='p0 [Pa]', y=['Re(Zl) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[7]), x='p0 [Pa]', y=['Im(Zl) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[8]), x='p0 [Pa]', y=['Re(Zp) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[9]), x='p0 [Pa]', y=['Im(Zp) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[10]), x='p0 [Pa]', y=['jIon1 [uA/cm^2]', 'jIon2 [uA/cm^2]'], marker='x')
+    fig.suptitle(f'{cf['name']}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
+    plt.tight_layout()
+    plt.show()
+    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')

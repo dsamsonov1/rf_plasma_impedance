@@ -89,7 +89,7 @@ def calc_discharge():
 
                         matching_cond = np.abs(cf["val_C_m1"] - val_C_m1_prev) > 1e-12 or np.abs(cf["val_C_m2"] - val_C_m2_prev) > 1e-12
                         
-                        beta2 = 0.8
+                        beta2 = 0.01
                         cf["val_C_m1"] = val_C_m1_prev + beta2 * (cf["val_C_m1"] - val_C_m1_prev)
                         cf["val_C_m2"] = val_C_m2_prev + beta2 * (cf["val_C_m2"] - val_C_m2_prev)
 
@@ -141,7 +141,7 @@ def calc_discharge():
     return pd.concat([pd1, pd2], axis=1)
 
 sweep_freq = False
-sweep_pressure = True#False
+sweep_pressure = False
 
 df = pd.DataFrame()
 
@@ -155,10 +155,10 @@ if sweep_freq:
     #    freqs = [13.56e6, 27e6, 40e6, 60e6, 80e6]
     #    freqs = [13.56e6, 27e6]
     #    inds = [1500e-9, 150e-9]
-    #    freqs = [60e6]
-    #    inds = [10e-9]
-    freqs = [13.56e6, 27e6]
-    inds = [1500e-9, 750e-9]
+    freqs = [20e6]
+    inds = [550e-9] 
+    #freqs = [13.56e6, 27e6]
+    #inds = [1200e-9, 750e-9]
 
     for i in range(len(freqs)):
         cf["f0"] = freqs[i]
@@ -204,3 +204,4 @@ fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_d
 #TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета
 #TODO Сделать PDF отчет, включающий графики каждой итерации для контроля качества модели
 #TODO Сделать расчет скорости и селективности травления через оценку IEDF
+#TODO Приделать контроль установившегося режима в цепи (breakpoint в ngspice?)

@@ -20,7 +20,7 @@ def loadConf(a_cfname):
 
     o_cf: dict[str, Any] = {}
 
-    o_cf["name"] = data["name"]
+    o_cf["name"] = a_cfname
     o_cf["comment"] = data["comment"]
     o_cf["Vm"] = data["Vm"]
     o_cf["f0"] = data["f0"]
@@ -54,7 +54,8 @@ def loadConf(a_cfname):
 # 2. Загружаем параметры рабочей точки ВЧ разряда
 #################
 
-cfname = 'as1'
+#cfname = 'test_of_mode'
+cfname = 'pc1'
 
 cf = loadConf(cfname)
 
