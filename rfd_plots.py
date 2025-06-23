@@ -232,3 +232,114 @@ def plot_sweepResult(a_df):
     plt.tight_layout()
     plt.show()
     fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')
+
+def plot_devResult(a_df):
+
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=(10, 8))
+    center = (cf["C_m1_init"]*1e12, cf["C_m2_init"]*1e12)
+    
+    # Create the scatter plot with color mapping
+    scatter = ax.scatter(
+        x=a_df['C1 [pF]'].values,
+        y=a_df['C2 [pF]'].values,
+        c=a_df['f0 [MHz]'].values,  # Color points by z-values
+        cmap='viridis',  # Choose a colormap
+        alpha=0.7,  # Slightly transparent points
+        edgecolors='none',  # No border on points
+        s=100 #Point size
+    )
+
+    # Set axes to cross at specified point
+    ax.spines['left'].set_position(('data', center[0]))
+    ax.spines['bottom'].set_position(('data', center[1]))
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    
+    padding=1.5
+    # Calculate symmetric limits around center
+    x_range = max(abs(np.array(a_df['C1 [pF]'].values) - center[0])) * padding
+    y_range = max(abs(np.array(a_df['C2 [pF]'].values) - center[1])) * padding
+    
+    ax.set_xlim(center[0] - x_range, center[0] + x_range)
+    ax.set_ylim(center[1] - y_range, center[1] + y_range)
+    
+    # Label each point with its coordinates
+    for index in range(len(a_df['C1 [pF]'])):
+        ax.text(a_df['C1 [pF]'].values[index], a_df['C2 [pF]'].values[index], f'{a_df['f0 [MHz]'].values[index]:.2f}; {a_df['G2'].values[index]:.2f}; {a_df['Pp [W]'].values[index]:.2f}', 
+                ha='left', va='bottom',
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+    
+    # Add grid lines
+    ax.grid(True, linestyle='--', alpha=0.4)
+
+    # Customize axis labels
+    # X-axis label at right end
+    ax.set_xlabel('C1 [pF]', 
+                 loc='right',
+                 labelpad=10)
+    
+    # Y-axis label at top and rotated
+    ax.set_ylabel('C2 [pF]',
+                 y=1,
+                 va='top',
+                 labelpad=0,
+                 rotation=0)  # Horizontal rotation    
+    
+    # Add colorbar
+    cbar = plt.colorbar(scatter, ax=ax)
+    cbar.set_label('f0 [MHz]')
+    
+    ax.set_title('CAPS Deviation')
+         
+    plt.tight_layout()
+    plt.show()
+#    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_cdiv.png')
+
+    a_df = a_df[a_df['G'] <= 0.9]
+
+    fig = plt.figure(figsize=(10, 8))
+    fig.suptitle('Влияние отклонения емкостей согласующего устройства', fontsize=16)
+    gs = gridspec.GridSpec(2, 7)  # Second row half height
+
+    ax1 = plt.subplot(gs[0, 0:3])
+    ax2 = plt.subplot(gs[0, 4:7])
+    ax3 = plt.subplot(gs[1, 2:5])  # Span all columns in second row
+
+#    x_min, x_max = 1200, 1900
+#    y_min, y_max = 140, 200
+
+    x = a_df['C1 [pF]'].values
+    y = a_df['C2 [pF]'].values
+    Z = a_df['f0 [MHz]'].values
+    contour1 = ax1.tricontourf(x, y, Z, alpha=0.8)
+    cbar = fig.colorbar(contour1, ax=ax1, orientation='vertical', pad=0.1)
+    cbar.set_label('f0 [MHz]', rotation=90, labelpad=15)
+    ax1.set_xlabel('C1 [pF]')
+    ax1.set_ylabel('C2 [pF]')
+#    plt.colorbar(contour1, ax=ax1, label='f0 [MHz]')
+#    plt.xlim(x_min, x_max)
+#    plt.ylim(y_min, y_max)
+    
+    Z = a_df['G2'].values
+    contour2 = ax2.tricontourf(x, y, Z, alpha=0.8)
+    cbar = fig.colorbar(contour2, ax=ax2, orientation='vertical', pad=0.1)
+    cbar.set_label('G^2 [1]', rotation=90, labelpad=15)
+    ax2.set_xlabel('C1 [pF]')
+    ax2.set_ylabel('C2 [pF]')
+#    plt.colorbar(contour2, ax=ax2)    
+#    plt.xlim(x_min, x_max)
+#    plt.ylim(y_min, y_max)
+    
+    Z = a_df['Ubias [V]'].values
+    contour3 = ax3.tricontourf(x, y, Z, alpha=0.8)
+    cbar = fig.colorbar(contour3, ax=ax3, orientation='vertical', pad=0.1)
+    cbar.set_label('Ubias [V]', rotation=90, labelpad=15)
+    ax3.set_xlabel('C1 [pF]')
+    ax3.set_ylabel('C2 [pF]')
+#    plt.colorbar(contour3, ax=ax3) 
+ #   plt.xlim(x_min, x_max)
+#    plt.ylim(y_min, y_max)
+
+    plt.tight_layout()
+    plt.show()

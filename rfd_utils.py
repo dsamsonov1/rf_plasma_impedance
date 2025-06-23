@@ -352,7 +352,7 @@ def calcPlasmaQuantities(postprocess=False):
                                  'Re(Zi) [Ohm]': [Rii], 'Im(Zi) [Ohm]': [Xii], 'Re(Zl) [Ohm]': [Rll], 'Im(Zl) [Ohm]': [Xll], 'Re(Zp) [Ohm]': [Rpl], 'Im(Zp) [Ohm]': [Xpl],
                                  'Pp [W]': [cf["Ppl"]], 'PRm [W]': [P_R_m], 'PRstray [W]': [P_R_stray], 'Ptot [W]': [cf["Ppl"] + P_R_m + P_R_stray],
                                  'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Vs1 [V]': [cf["_Vs1"]], 'Vs2 [V]': [cf["_Vs2"]],
-                                 'G': [cf['gamma']], 'G2': [cf['gamma']^2]})
+                                 'G': [cf['gamma']], 'G2': [cf['gamma']**2]})
 
 
 def printSimulationResults():
@@ -438,10 +438,14 @@ def redefineRuntimeParams():
     cf["val_C_m1"] = cf["C_m1_init"] 
     cf["val_C_m2"] = cf["C_m2_init"]
     
-def sample_deviatedC(initial_values, percentages, N, linear=False, seed=None):
+def sample_deviatedC(initial_values, percentages, N, linear=False, seed=None, symmetric=False):
 
-    rangeC1 = (initial_values[0] * (1 - percentages[0]/100), initial_values[0])
-    rangeC2 = (initial_values[1] * (1 - percentages[1]/100), initial_values[1])
+    if symmetric:
+        rangeC1 = (initial_values[0] * (1 - percentages[0]/100), initial_values[0] * (1 + percentages[0]/100))
+        rangeC2 = (initial_values[1] * (1 - percentages[1]/100), initial_values[1] * (1 + percentages[1]/100))
+    else:
+        rangeC1 = (initial_values[0] * (1 - percentages[0]/100), initial_values[0])
+        rangeC2 = (initial_values[1] * (1 - percentages[1]/100), initial_values[1])
 
     if linear:
         samplesC1 = np.linspace(rangeC1[0], rangeC1[1], N)
