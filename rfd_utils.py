@@ -179,8 +179,11 @@ def calcCircuit():
     # print(simulator) # Можно напечатать .IC для проверки
 #    print(circuit) # Можно напечатать получившийся netlist для проверки
 
+    # Сформировать строку с ngspice netlist для отчета
+    cf['sim_circ'] = str(circuit)
+
 #    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
-    cf["analysis"] = simulator.transient(step_time=cf["Tf"] / cf['ngspice_sim_step_period_frac'], end_time=cf["tmax_sim"])
+    cf['analysis'] = simulator.transient(step_time=cf["Tf"] / cf['ngspice_sim_step_period_frac'], end_time=cf["tmax_sim"])
 
 
 ##########
@@ -347,19 +350,19 @@ def calcPlasmaQuantities(postprocess=False):
                                  'L_bulk [m]': [cf["l_B"]], 'T0 [K]': [cf["T0"]], 'Rrf [Ω]': [cf['val_R_rf']], 'Rm [Ω]': [cf['val_R_m']],
                                  'Cstray [pF]': [cf['val_C_stray']], 'Rstray [Ω]': [cf['val_R_stray']], "Ie01 [A]": [cf["Ie01"]],
                                  "alpha []": [cf["alpha"]], "Iion1 [A]": [cf["Iion1"]], "CCs1 []": [cf["CCs1"]], "Lp [nH]": [cf["Lp"]/1e-9],
-                                 "Rp [Ω]": [cf["Rp"]], "Ie02 [A]": [cf["Ie02"]], "Iion2 [A]": [cf["Iion2"]], "CCs2 []": [cf["CCs2"]],
-                                 "Vm [V]": [cf["Vm"]], 'jIon1 [uA/cm^2]': [cf['Iion1']*1e6/(cf['Ae']*1e4)], 'jIon2 [uA/cm^2]': [cf['Iion2']*1e6/(cf['Ag']*1e4)],
+                                 'Rp [Ω]': [cf['Rp']], 'Ie02 [A]': [cf['Ie02']], 'Iion2 [A]': [cf['Iion2']], 'CCs2 []': [cf['CCs2']],
+                                 'Vm [V]': [cf['Vm']], 'jIon1 [uA/cm^2]': [cf['Iion1']*1e6/(cf['Ae']*1e4)], 'jIon2 [uA/cm^2]': [cf['Iion2']*1e6/(cf['Ag']*1e4)],
                                  'Re(Zi) [Ohm]': [Rii], 'Im(Zi) [Ohm]': [Xii], 'Re(Zl) [Ohm]': [Rll], 'Im(Zl) [Ohm]': [Xll], 'Re(Zp) [Ohm]': [Rpl], 'Im(Zp) [Ohm]': [Xpl],
-                                 'Pp [W]': [cf["Ppl"]], 'PRm [W]': [P_R_m], 'PRstray [W]': [P_R_stray], 'Ptot [W]': [cf["Ppl"] + P_R_m + P_R_stray],
-                                 'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Vs1 [V]': [cf["_Vs1"]], 'Vs2 [V]': [cf["_Vs2"]],
-                                 'G': [cf['gamma']], 'G2': [cf['gamma']**2]})
+                                 'Pp [W]': [cf['Ppl']], 'PRm [W]': [P_R_m], 'PRstray [W]': [P_R_stray], 'Ptot [W]': [cf['Ppl'] + P_R_m + P_R_stray],
+                                 'Ubias [V]': [Ubias], 'Urf [V]': [Urf], 'Vs1 [V]': [cf['_Vs1']], 'Vs2 [V]': [cf['_Vs2']],
+                                 'G [1]': [cf['gamma']], 'G^2 [1]': [cf['gamma']**2]})
 
 
 def printSimulationResults():
     calcPlasmaQuantities(postprocess=True)
     print(f'Ppl={cf['pd']['Pp [W]'].values[0]:.2f} [W], PRm={cf['pd']['PRm [W]'].values[0]:.2f} [W], PRstray={cf['pd']['PRstray [W]'].values[0]:.2f} [W], TOTAL={cf['pd']['Ptot [W]'].values[0]:.2f} [W]')
     print(f'Zi=({cf['pd']['Re(Zi) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zi) [Ohm]'].values[0]:.2f}) [Ohm], Zl=({cf['pd']['Re(Zl) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zl) [Ohm]'].values[0]:.2f}) [Ohm], Zp=({cf['pd']['Re(Zp) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zp) [Ohm]'].values[0]:.2f}) [Ohm]')
-    print(f'G={cf['pd']['G'].values[0]:.2f}, G^2={cf['pd']['G2'].values[0]:.2f}')
+    print(f'G={cf['pd']['G [1]'].values[0]:.2f}, G^2={cf['pd']['G^2 [1]'].values[0]:.2f}')
     print(f'=== SIMULATION COMPLETE ===\n')
 
 
@@ -470,7 +473,7 @@ def is_valid_date(date_str):
 
 def get_next_available_aaaa(base_directory, bb):
     """
-    Checks for subdirectories matching the pattern AAAA_BB_YYYY-MM-DD
+    Checks for subdirectories matching the pattern BB_AAAA_YYYY-MM-DD
     and returns the next available AAAA. If no existing matches are found, returns 0.
     Raises an error if the next AAAA is unavailable (i.e., exceeds 9999).
     
@@ -480,7 +483,7 @@ def get_next_available_aaaa(base_directory, bb):
     :raises ValueError: If the next AAAA exceeds 9999.
     """
     # Define the regex pattern to match the required directory format
-    regex = re.compile(rf"^(\d{{4}})_{re.escape(bb)}_(\d{{4}})-(\d{{2}})-(\d{{2}})$")
+    regex = re.compile(rf"^{re.escape(bb)}_(\d{{4}})_(\d{{4}})-(\d{{2}})-(\d{{2}})$")
 
     existing_a = []
 
@@ -529,7 +532,7 @@ def create_subdirectory(base_directory, aaaa, bb):
     current_date = datetime.now().strftime("%Y-%m-%d")
     
     # Create the directory name
-    directory_name = f"{formatted_aaaa}_{bb}_{current_date}"
+    directory_name = f"{bb}_{formatted_aaaa}_{current_date}"
     
     # Create the full path for the new subdirectory
     full_path = os.path.join(base_directory, directory_name)

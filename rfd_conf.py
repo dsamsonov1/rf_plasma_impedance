@@ -1,5 +1,12 @@
 from typing import Any
 import json5
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
 
 #################
 # 1. Определяем физические константы
@@ -49,13 +56,63 @@ def loadConf(a_cfname):
 
     return o_cf
 
+def add_header_footer(canvas, doc):
+    # Сохраняем текущее состояние canvas
+    canvas.saveState()
+    
+    # Верхний колонтитул (header)
+    header_text = f"rf-discharge; config {cf['name']}; run# {cf['next_aaaa']}; date {cf['current_date']}"
 
+    # Убедимся, что текст не выходит за пределы страницы
+    header_y = A4[1] - 20*mm  # 20 мм от верхнего края
+    canvas.setFont('Helvetica-Bold', 10)
+    canvas.drawCentredString(A4[0]/2, header_y, header_text)  # По центру
+    
+    # Линия под колонтитулом
+    canvas.line(20*mm, header_y - 2*mm, A4[0] - 20*mm, header_y - 2*mm)    
+    
+    # Нижний колонтитул (footer)
+    footer_text = f"Page {doc.page}"
+    canvas.setFont('Helvetica', 8)
+    canvas.drawCentredString(A4[0]/2, 20, footer_text)
+    
+    # Линия разделитель
+    canvas.line(50, A4[1] - 40, A4[0] - 50, A4[1] - 40)
+    canvas.line(50, 30, A4[0] - 50, 30)
+    
+    # Восстанавливаем состояние canvas
+    canvas.restoreState()    
+
+def initReport():
+    # Create PDF document
+    cf['doc'] = SimpleDocTemplate(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_report.pdf', pagesize=letter,
+                            rightMargin=72, leftMargin=72,
+                            topMargin=72, bottomMargin=72)
+    
+    # Prepare styles
+    cf['styles'] = getSampleStyleSheet()
+#    styles.add(ParagraphStyle(name='Heading2', 
+#                             fontSize=14, 
+#                             leading=16,
+#                             spaceAfter=12,
+#                             textColor=colors.darkblue))
+    
+    # Story will hold all the flowables (elements) of the document
+    cf['story'] = []
+    cf['story_iterations'] = []
+    
+def finalizeReport():
+    # Build the PDF
+    trueStory = cf['story'] + cf['story_iterations']
+    cf['doc'].build(trueStory, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
+
+    
 #################
 # 2. Загружаем параметры рабочей точки ВЧ разряда
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'pc1'
+cfname = 'as1'
 
 cf = loadConf(cfname)
 

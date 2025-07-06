@@ -95,6 +95,34 @@ def solveDischargePoint(a_df, optimizeMatching=False):
             calc_dischargePoint()
             plot_UI()
         printSimulationResults()
+
+        # Add circuit used in an iteration to report
+        subtitle = Paragraph("Ngspice circuit", cf['styles']['Heading2'])
+        cf['story_iterations'].append(subtitle)
+        cf['story_iterations'].append(Spacer(1, 12))
+        text = Paragraph(cf['sim_circ'], cf['styles']['Normal'])
+        cf['story_iterations'].append(text)
+        
+        subtitle = Paragraph("VI plot", cf['styles']['Heading2'])
+        cf['story_iterations'].append(subtitle)
+        cf['story_iterations'].append(Spacer(1, 12))
+        cf['story_iterations'].append(cf['fig_vi'])
+
+        subtitle = Paragraph("Transient plot", cf['styles']['Heading2'])
+        cf['story_iterations'].append(subtitle)
+        cf['story_iterations'].append(Spacer(1, 12))
+        cf['story_iterations'].append(cf['fig_tr'])
+
+        subtitle = Paragraph("Sheath voltage plot", cf['styles']['Heading2'])
+        cf['story_iterations'].append(subtitle)
+        cf['story_iterations'].append(Spacer(1, 12))
+        cf['story_iterations'].append(cf['fig_sh'])
+
+        subtitle = Paragraph("Spectrum plot", cf['styles']['Heading2'])
+        cf['story_iterations'].append(subtitle)
+        cf['story_iterations'].append(Spacer(1, 12))
+        cf['story_iterations'].append(cf['fig_sp'])
+
         return pd.concat([a_df, cf['pd']], ignore_index=True)
 
 
@@ -104,40 +132,54 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'of'
+workmode = 'sp'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'])
 cf['out_path'], cf['current_date'] = create_subdirectory('out/', cf['next_aaaa'], cf['name'])
 # Redirect stdout to the Logger
 sys.stdout = Logger(f'{cf['out_path']}/output.log')    
+initReport()
 
 match workmode:
     case 'sp':
         print(f'Pressure sweep')
+        title = Paragraph("Pressure sweep", cf['styles']['Title'])
+        cf['story'].append(title)
+        cf['story'].append(Spacer(1, 24))
         
-        press = [1, 2.5, 5, 7.5, 10]
+        
+#        press = [1]
+        press = [1, 2.5, 5]
+#        press = [1, 2.5, 5, 7.5, 10]
 
+        addReportPressureIterHeader(press)
+        
         for i, p in enumerate(press):
             cf["p0"] = p
             
-            print(f'=== SWEEP STEP #{i}: p0={p} Pa')
+            print(f'=== SWEEP STEP #{i+1}: p0={p} Pa')
+
+            subtitle = Paragraph(f'=== SWEEP STEP #{i+1}: p0={p} Pa', cf['styles']['Heading2'])
+            cf['story_iterations'].append(subtitle)
+            cf['story_iterations'].append(Spacer(1, 36))
+            
             df = solveDischargePoint(df, True)
         plot_sweepResult(df)
             
     case 'sf':
-        #    freqs = [13.56e6, 27e6, 40e6, 60e6, 80e6]
+            freqs = [30e6, 40e6, 50e6, 60e6, 70e6, 80e6]
         #    freqs = [13.56e6, 27e6]
         #    inds = [1500e-9, 150e-9]
-        freqs = [20e6]
-        inds = [550e-9] 
+        # freqs = [20e6]
+            inds = [550e-9, 450-9, 350-9, 250-9, 150-9, 50-9] 
         #freqs = [13.56e6, 27e6]
         #inds = [1200e-9, 750e-9]
 
-        for i in range(len(freqs)):
-            cf["f0"] = freqs[i]
-            cf["val_L_m2"] = inds[i]
-            df = solveDischargePoint(df, True)
+            for i in range(len(freqs)):
+                cf["f0"] = freqs[i]
+                cf["val_L_m2"] = inds[i]
+                df = solveDischargePoint(df, True)
 
     case 'sn':
             df = solveDischargePoint(df, True)
@@ -215,7 +257,7 @@ match workmode:
         sys.exit("Unknown work mode. STOP.")
         
 df.to_excel(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}.xlsx', index=False)
-
+finalizeReport()
 
 #TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета
 #TODO Сделать PDF отчет, включающий графики каждой итерации для контроля качества модели

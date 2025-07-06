@@ -1,10 +1,25 @@
 import matplotlib
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Table, TableStyle
+from matplotlib.figure import Figure
 
 from rfd_conf import cf
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from rfd_utils import *
+import io 
+
+def renderFigureToReport(a_fig):
+    # Render to ReportLab
+    canvas = FigureCanvasAgg(a_fig)
+    buffer = io.BytesIO()
+    canvas.print_png(buffer)
+#   fig.clear()  # Clear the figure
+    buffer.seek(0)
+    
+#    return Image(buffer)
+    return Image(buffer, width=500, height=400)
 
 def plot_Te():
     en_range = np.arange(1, 7.1, 0.1)
@@ -90,6 +105,7 @@ def plot_UI():
     ax1.legend()
     plt.show()
     
+    cf['fig_vi'] = renderFigureToReport(fig)
     
     # Графики переходного процесса для контроля сходимости
     fig = plt.figure(figsize=(9, 10))
@@ -103,6 +119,8 @@ def plot_UI():
     _ = ax1.set_xlabel('Periods count')
     plt.show()
     
+    cf['fig_tr'] = renderFigureToReport(fig)
+
     # Графики Vs1, Vs2 на одной картинке
     fig = plt.figure(figsize=(9, 10))
     ax1 = fig.add_subplot(1, 1, 1)
@@ -112,6 +130,8 @@ def plot_UI():
     ax1.spines['bottom'].set_position('zero')
     ax1.legend()
     plt.show()
+
+    cf['fig_sh'] = renderFigureToReport(fig)
 
     # Спектры
 
@@ -200,6 +220,9 @@ def plot_UI():
     axs.legend()
     _ = axs.set_xticks([x + 0.5 * barWidth for x in true_freqs], np.round(true_freqs, 2))
     plt.show()
+    
+    cf['fig_sp'] = renderFigureToReport(fig)
+
 
 '''    
     # Спектр импеданса
@@ -233,6 +256,10 @@ def plot_sweepResult(a_df):
     plt.show()
     fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')
 
+    cf['story'].append(renderFigureToReport(fig))
+
+
+# График подстройки частоты при отклонении емкостей
 def plot_devResult(a_df):
 
     # Create figure and axis
@@ -343,3 +370,35 @@ def plot_devResult(a_df):
 
     plt.tight_layout()
     plt.show()
+    
+
+def addReportPressureIterHeader(a_pres):
+    
+    # Подготавливаем данные для таблицы
+    header_row = [i+1 for i in range(len(a_pres))]  # Номера элементов (1-based)
+    data_row = list(a_pres)  # Значения элементов
+    
+    # Создаем таблицу (2 строки)
+    table_data = [
+        header_row,
+        a_pres
+    ]
+
+    table = Table(table_data)
+    
+    # Добавляем стили таблицы
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Заголовок
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ])
+
+    table.setStyle(style)
+
+    # Добавляем таблицу в документ
+    cf['story'].append(table)
