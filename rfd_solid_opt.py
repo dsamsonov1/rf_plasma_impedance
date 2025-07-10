@@ -132,7 +132,7 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'sp'
+workmode = 'sn'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'])
@@ -150,17 +150,18 @@ match workmode:
         
         
 #        press = [1]
-        press = [1, 2.5, 5]
-#        press = [1, 2.5, 5, 7.5, 10]
+#        press = [1, 2.5, 5]
+        press = [1, 2.5, 5, 7.5, 10]
 
         addReportPressureIterHeader(press)
         
         for i, p in enumerate(press):
             cf["p0"] = p
             
-            print(f'=== SWEEP STEP #{i+1}: p0={p} Pa')
+            pstr = f'=== SWEEP STEP #{i+1}: p0={p} Pa'
+            print(pstr)
 
-            subtitle = Paragraph(f'=== SWEEP STEP #{i+1}: p0={p} Pa', cf['styles']['Heading2'])
+            subtitle = Paragraph(pstr, cf['styles']['Heading2'])
             cf['story_iterations'].append(subtitle)
             cf['story_iterations'].append(Spacer(1, 36))
             
@@ -182,7 +183,8 @@ match workmode:
                 df = solveDischargePoint(df, True)
 
     case 'sn':
-            df = solveDischargePoint(df, True)
+            print(f'Single point simulation')
+            df = solveDischargePoint(df, optimizeMatching=True)
 
     case 'of':
             print(f'C1, C2 deviation mode')

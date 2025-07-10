@@ -10,7 +10,7 @@ import os
 import re
 from datetime import datetime
 import sys
-
+import matplotlib.pyplot as plt
 
 ##############
 # Определение вспомогательных функций
@@ -151,12 +151,12 @@ def calcCircuit():
     circuit.R('Rm', 4, 5, cf["val_R_m"])
     circuit.C('Cstray', 5, 6, cf["val_C_stray"])
     circuit.R('Rstray', 6, 0, cf["val_R_stray"])
-    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {cf["Ie01"]}*exp({cf["alpha"]}*v(7,5)) : 1e-12')
+    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {cf["Ie01"]}*exp({cf["alpha"]}*v(7,5)) : 1e-15')
     circuit.CurrentSource('Bi_e', 7, 5, cf["Iion1"])
     circuit.BehavioralCapacitor('Cs1', 7, 5, capacitance_expression=f'C=\'sqrt({cf["CCs1"]}/abs(v(7,5)))\'')
     circuit.L('L_p', 7, 8, cf["Lp"])
     circuit.R('R_p', 8, 9, cf["Rp"])
-    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {cf["Ie02"]}*exp({cf["alpha"]}*v(9,10)) : 1e-12')
+    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {cf["Ie02"]}*exp({cf["alpha"]}*v(9,10)) : 1e-15')
     circuit.CurrentSource('Bi_g', 9, 10, cf["Iion2"])
     circuit.BehavioralCapacitor('Cs2', 9, 10, capacitance_expression=f'C=\'sqrt({cf["CCs2"]}/abs(v(9,10)))\'')
     circuit.VoltageSource('Viz', 10, 0, 0)
@@ -177,13 +177,151 @@ def calcCircuit():
     simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
 
     # print(simulator) # Можно напечатать .IC для проверки
-#    print(circuit) # Можно напечатать получившийся netlist для проверки
+    print(circuit) # Можно напечатать получившийся netlist для проверки
 
     # Сформировать строку с ngspice netlist для отчета
     cf['sim_circ'] = str(circuit)
 
 #    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
-    cf['analysis'] = simulator.transient(step_time=cf["Tf"] / cf['ngspice_sim_step_period_frac'], end_time=cf["tmax_sim"])
+    cf['analysis'] = simulator.transient(step_time=cf["Tf"] / cf['sim_periods_div'], end_time=cf["tmax_sim"])
+
+def plot_UI2(a_iter=0):
+
+    ##### Извлекаем интересующие токи и напряжения
+
+    time_raw = np.array(cf['analysis'].time)
+
+    Vpl_raw = getU('5', '0', cf['analysis'])  # Vpl
+    Ipl_raw = getU('8', '9', cf['analysis']) / cf['Rp']  # Ipl
+    V_R_rf_raw = getU('2', '1', cf['analysis'])  # Vrf
+    Irf_raw = V_R_rf_raw / cf["val_R_rf"]  # Irf
+    Vl_raw = getU('3', '0', cf['analysis'])  # Vl
+    Il_raw = getU('4', '5', cf['analysis']) / cf["val_R_m"]  # Il
+    Vs1_raw = getU('5', '7', cf['analysis'])  # Vs1
+    Vs2_raw = getU('9', '10', cf['analysis'])  # Vs2
+    V_R_rf_raw = getU('2', '1', cf['analysis'])  # Vrf
+    VRm_raw = getU('4', '5', cf['analysis'])  # VRm
+    VRstray_raw = getU('6', '0', cf['analysis'])  # VRm
+
+    # Строим ток и напряжение на плазме (2 периода)
+
+    #TODO разобраться с отображением и учетом в коде steady линии на графике
+    first_steady_period = 400  # Номер периода, с которого считаем, что установившийся режим наступил
+
+    time_2_last_periods = extract_N_periods(time_raw, 1, 2, 'rev')
+    Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2, 'rev')
+    Ipl_2_last_periods = extract_N_periods(Ipl_raw, 1, 2, 'rev')
+
+    Vs1_2_last_periods = extract_N_periods(Vs1_raw, 1, 2)
+    Vs2_2_last_periods = extract_N_periods(Vs2_raw, 1, 2)
+
+    # Графики Upl, Ipl на одной картинке
+    fig = plt.figure(figsize=(9, 10))
+    ax1 = fig.add_subplot(1, 1, 1)
+
+    ax1.set_xlabel('time (s)')
+    ax1.set_ylabel('Vpl [V]', color='tab:red')
+#    ax1.spines['bottom'].set_position('zero')
+    ax1.plot(time_2_last_periods, Vpl_2_last_periods, color='tab:red',
+                label='Vpl')  # Показываем два _предпоследних_ периода, т.к.
+    ax1.tick_params(axis='y', labelcolor='tab:red')
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    ax2.spines['bottom'].set_position('zero')
+    ax2.set_ylabel('Ipl [A]', color='tab:blue')  # we already handled the x-label with ax1
+    ax2.plot(time_2_last_periods, Ipl_2_last_periods, color='tab:blue', label='Ipl')
+    ax2.tick_params(axis='y', labelcolor='tab:blue')
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    ax1.legend()
+    
+    if a_iter > 0:
+        plt.text(0.02, 0.98, f'ne iteration #{a_iter}', 
+                 transform=plt.gca().transAxes,
+                 verticalalignment='top',
+                 horizontalalignment='left',
+                 bbox=dict(facecolor='white', alpha=0.5))
+    plt.show()
+    
+   
+    # Графики переходного процесса для контроля сходимости
+    fig = plt.figure(figsize=(9, 10))
+    ax1 = fig.add_subplot(1, 1, 1)
+    ax1.plot(time_raw / cf["Tf"], Vpl_raw, label='Vp', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1.plot(time_raw / cf["Tf"], Vs1_raw, label='Vs1', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1.plot(time_raw / cf["Tf"], Vs2_raw, label='Vs2', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1.set_ylabel('U [V]')
+    ax1.axvline(first_steady_period, color='cyan', linestyle=':', label='steady state')
+    ax1.legend()
+    _ = ax1.set_xlabel('Periods count')
+
+    if a_iter > 0:
+        plt.text(0.02, 0.98, f'ne iteration #{a_iter}', 
+                 transform=plt.gca().transAxes,
+                 verticalalignment='top',
+                 horizontalalignment='left',
+                 bbox=dict(facecolor='white', alpha=0.5))
+    
+    plt.show()
+    
+
+    # Графики Vs1, Vs2 на одной картинке
+    fig = plt.figure(figsize=(9, 10))
+    ax1 = fig.add_subplot(1, 1, 1)
+    ax1.plot(time_2_last_periods, Vs1_2_last_periods, label='Vs1')
+    ax1.plot(time_2_last_periods, Vs2_2_last_periods, label='Vs2')
+    ax1.set_ylabel('U [V]')
+    ax1.spines['bottom'].set_position('zero')
+    ax1.legend()
+
+    if a_iter > 0:
+        plt.text(0.02, 0.98, f'ne iteration #{a_iter}', 
+                 transform=plt.gca().transAxes,
+                 verticalalignment='top',
+                 horizontalalignment='left',
+                 bbox=dict(facecolor='white', alpha=0.5))
+    
+    plt.show()
+
+
+    # Спектры
+
+    (_, Ipl_abs, Ipl_phase, freqs, freqsMHz, reduced_freqs, Ipl_reduced_abs, Ipl_reduced_angle, waste_freqs,
+     Ipl_waste_abs, Ipl_waste_angle, true_freqs, Ipl_true_abs, Ipl_true_angle) = get_spectra(Ipl_raw)
+    (_, Vpl_abs, Vpl_phase, _, _, _, Vpl_reduced_abs, Vpl_reduced_angle, _, Vpl_waste_abs, Vpl_waste_angle, _,
+     Vpl_true_abs, Vpl_true_angle) = get_spectra(Vpl_raw)
+
+    (_, _, _, _, _, _, _, _, _, _, _, _, Il_true_abs, Il_true_angle) = get_spectra(Irf_raw)
+    (_, _, _, _, _, _, _, _, _, _, _, _, Vl_true_abs, Vl_true_angle) = get_spectra(Vl_raw)
+
+    # Спектры Upl, Ipl на одной картинке
+    barWidth = 6
+    fig = plt.figure(figsize=(9, 10))
+    axs = fig.add_subplot(1, 1, 1)
+    br2 = [x + barWidth for x in true_freqs]
+    bars = axs.bar(true_freqs, Vpl_true_abs, width=barWidth, label='Vpl [V]')
+    # Iterate and add text labels
+    for bar in bars:
+        height = bar.get_height()
+        axs.text(bar.get_x() + bar.get_width() / 2., height, '%.2f' % height, ha='center', va='bottom')
+
+    bars = axs.bar(br2, Ipl_true_abs, width=barWidth, label='Ipl [A]')
+    # Iterate and add text labels
+    for bar in bars:
+        height = bar.get_height()
+        axs.text(bar.get_x() + bar.get_width() / 2., height, '%.2f' % height, ha='center', va='bottom')
+    axs.set_yscale('log')
+    axs.set_ylabel('Amplitude [a.u.]')
+    axs.set_xlabel('Frequency [MHz]')
+    axs.legend()
+    _ = axs.set_xticks([x + 0.5 * barWidth for x in true_freqs], np.round(true_freqs, 2))
+
+    if a_iter > 0:
+        plt.text(0.02, 0.98, f'ne iteration #{a_iter}', 
+                 transform=plt.gca().transAxes,
+                 verticalalignment='top',
+                 horizontalalignment='left',
+                 bbox=dict(facecolor='white', alpha=0.5))
+    
+    plt.show()
 
 
 ##########
@@ -205,7 +343,9 @@ def calc_dischargePoint():
     
             print(f'  -- ne #{iter_no: =2}:', end=' ')
     
+            redefineCircuitParameters()
             calcCircuit()
+            plot_UI2(iter_no)
             calcPlasmaQuantities(postprocess=False)
     
             ##############
@@ -221,14 +361,14 @@ def calc_dischargePoint():
             # "регуляризация" для улучшения сходимости итераций ne (suggested by G. Marchiy)
             ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
     
-            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3]', end=' ')
+            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={np.abs(ne_new - cf["ne"]):.2e}', end=' ')
     
             if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
-                print(f'dne={np.abs(ne_new - cf["ne"]):.2e} <- ne CONVERGED')
+                print(f'<- ne CONVERGED', end='\n')
                 return cf['gamma']
     
             else:
-                print(f'dne={np.abs(ne_new - cf["ne"]):.2e} --', end='\n')
+                print(f'--', end='\n')
     
         else:
             sys.exit("ne NOT CONVERGED. ne ITERATIONS LIMIT REACHED. STOP.")
@@ -325,6 +465,10 @@ def calcVoltage_Mean(a_U1, a_U2):
 def calcPlasmaQuantities(postprocess=False):
     
     cf["Ppl"] = calcPower_Mean('5', '0', '8', '9', cf['Rp'])
+    
+    if cf["Ppl"] < 0:
+        sys.exit("Negative plasma power. STOP.")
+        
     cf["_Vs1"] = calcVoltage_Mean('5', '7')
     cf["_Vs2"] = calcVoltage_Mean('9', '10')
     (Rii, Xii) = calcImpedance_1Harm('2', '0', '1', '2', cf["val_R_rf"])
@@ -385,7 +529,7 @@ def redefineRuntimeParams():
     #################
 
     cf["num_periods_sim"] = 500  # Количество периодов ВЧ поля, которое надо просчитать
-    cf["sim_periods_div"] = 100  # Количество точек результата на период
+    cf["sim_periods_div"] = 100  # Количество точек результата на период и шаг по времени расчета цепи
     cf["tmax_sim"] = cf["Tf"] * cf["num_periods_sim"]  # Сколько времени просчитывать в Ngspice
     cf["tmin_sim"] = cf["Tf"] * (cf["num_periods_sim"] - 5)  # От какого времени делать вывод
     cf["timestep_output"] = cf["Tf"] / cf["sim_periods_div"]  # Шаг, с которым будет вывод
@@ -393,7 +537,7 @@ def redefineRuntimeParams():
     # Это и будет критерий наступления установившегося режима
     cf["num_periods_for_integration"] = 50
     cf["first_steady_period"] = cf["num_periods_sim"] - cf["num_periods_for_integration"]
-    cf['ngspice_sim_step_period_frac'] = 100
+#    cf['ngspice_sim_step_period_frac'] = 500
 
     ##############
     # 5. Определение Te
@@ -417,6 +561,13 @@ def redefineRuntimeParams():
 #        plot_Te()
 #        plot_K()
 
+    cf["P0"] = (cf["Vm"] / (2 * np.sqrt(2))) ** 2 / cf["val_R_rf"]
+    
+    cf["val_C_m1"] = cf["C_m1_init"] 
+    cf["val_C_m2"] = cf["C_m2_init"]
+    
+def redefineCircuitParameters():
+    
     #################
     # 8. Вычисляемые величины №2
     #################
@@ -436,10 +587,6 @@ def redefineRuntimeParams():
     cf["CCs1"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ae"] ** 2) / 2  # Коэффициент при емкости слоя горячего электрода
     cf["CCs2"] = (ct["qe"] * cf["ne"] * ct["eps_0"] * cf["Ag"] ** 2) / 2  # Коэффициент при емкости слоя заземленного электрода
 
-    cf["P0"] = (cf["Vm"] / (2 * np.sqrt(2))) ** 2 / cf["val_R_rf"]
-    
-    cf["val_C_m1"] = cf["C_m1_init"] 
-    cf["val_C_m2"] = cf["C_m2_init"]
     
 def sample_deviatedC(initial_values, percentages, N, linear=False, seed=None, symmetric=False):
 

@@ -112,7 +112,7 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'as1'
+cfname = 'dts_test1'
 
 cf = loadConf(cfname)
 
