@@ -132,7 +132,7 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'sp'
+workmode = 'sf'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'])
@@ -144,21 +144,13 @@ initReport()
 match workmode:
     case 'sp':
         print(f'Pressure sweep')
-        title = Paragraph("Pressure sweep", cf['styles']['Title'])
-        cf['story'].append(title)
-        cf['story'].append(Spacer(1, 24))
         
+        addReportPressureIterHeader(sw['sp']['press'])
         
-#        press = [1]
-        press = [1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-#        press = [1, 2.5, 5, 7.5, 10]
-
-        addReportPressureIterHeader(press)
-        
-        for i, p in enumerate(press):
+        for i, p in enumerate(sw['sp']['press']):
             cf["p0"] = p
             
-            pstr = f'=== SWEEP STEP #{i+1}: p0={p} Pa'
+            pstr = f'=== SWEEP STEP #{i+1}: p0={p} [Pa]'
             print(pstr)
 
             subtitle = Paragraph(pstr, cf['styles']['Heading2'])
@@ -169,18 +161,19 @@ match workmode:
         plot_sweepResult(df)
             
     case 'sf':
-            freqs = [30e6, 40e6, 50e6, 60e6, 70e6, 80e6]
-        #    freqs = [13.56e6, 27e6]
-        #    inds = [1500e-9, 150e-9]
-        # freqs = [20e6]
-            inds = [550e-9, 450-9, 350-9, 250-9, 150-9, 50-9] 
-        #freqs = [13.56e6, 27e6]
-        #inds = [1200e-9, 750e-9]
+            print(f'Frequency sweep')
+        
+            addReportFrequencyIterHeader(sw['sf']['freqs'], sw['sf']['inds'])
+            
+            for i in range(len(sw['sf']['freqs'])):
+                cf["f0"] = sw['sf']['freqs'][i]
+                cf["val_L_m2"] = sw['sf']['inds'][i]
 
-            for i in range(len(freqs)):
-                cf["f0"] = freqs[i]
-                cf["val_L_m2"] = inds[i]
+                pstr = f'=== SWEEP STEP #{i+1}: f0={cf["f0"]/1e6} [MHz], L_m2={cf["val_L_m2"]*1e9} [nH]'
+                print(pstr)
+
                 df = solveDischargePoint(df, True)
+            plot_sweepFreqResult(df)
 
     case 'sn':
             print(f'Single point simulation')

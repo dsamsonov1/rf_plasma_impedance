@@ -56,6 +56,20 @@ def loadConf(a_cfname):
 
     return o_cf
 
+def loadSweeps(a_cfname):
+    with open(f"conf/{a_cfname}.json5", 'r') as file:
+        data = json5.load(file)
+
+    s_cf: dict[str, Any] = {}
+
+    s_cf["comment"] = data["comment"]
+    s_cf["sp"] = data["sp"]
+    s_cf["sf"] = data["sf"]
+    s_cf["mc"] = data["mc"]
+    s_cf["of"] = data["of"]
+
+    return s_cf
+
 def add_header_footer(canvas, doc):
     # Сохраняем текущее состояние canvas
     canvas.saveState()
@@ -113,8 +127,10 @@ def finalizeReport():
 
 #cfname = 'test_of_mode'
 cfname = 'dts3'
+sfname = 'sweeps'
 
 cf = loadConf(cfname)
+sw = loadSweeps(sfname)
 
 # Размер зеркала макета М1: 250х185 -> площадь 0.0462 м2, емкость при d=1 мм: 410 пФ
 # Значения Rm и Rstray примерно соответствуют расчетам СУ с потерями

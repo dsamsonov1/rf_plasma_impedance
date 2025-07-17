@@ -254,7 +254,29 @@ def plot_sweepResult(a_df):
     fig.suptitle(f'{cf['name']}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
     plt.tight_layout()
     plt.show()
-    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep.png')
+    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep_p0.png')
+
+    cf['story'].append(renderFigureToReport(fig))
+
+def plot_sweepFreqResult(a_df):
+    fig = plt.figure(figsize=(9, 18))
+    gs = gridspec.GridSpec(5, 3, hspace=0)
+    #axs = gs.subplots(sharex=True)
+    a_df.plot(ax=fig.add_subplot(gs[0]), x='f0 [MHz]', y=['Pp [W]', 'PRm [W]', 'PRstray [W]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[1]), x='f0 [MHz]', y=['Ubias [V]', 'Urf [V]', 'Vs1 [V]', 'Vs2 [V]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[2]), x='f0 [MHz]', y='ne [m^-3]', marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[3]), x='f0 [MHz]', y='Te [eV]', marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[4]), x='f0 [MHz]', y=['Iion1 [A]', 'Iion2 [A]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[5]), x='f0 [MHz]', y=['C1 [pF]', 'C2 [pF]', 'L1 [nH]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[6]), x='f0 [MHz]', y=['Re(Zl) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[7]), x='f0 [MHz]', y=['Im(Zl) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[8]), x='f0 [MHz]', y=['Re(Zp) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[9]), x='f0 [MHz]', y=['Im(Zp) [Ohm]'], marker='x')
+    a_df.plot(ax=fig.add_subplot(gs[10]), x='f0 [MHz]', y=['jIon1 [uA/cm^2]', 'jIon2 [uA/cm^2]'], marker='x')
+    fig.suptitle(f'{cf['name']}: Ar p0={cf["p0"]:.1f} [Pa] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
+    plt.tight_layout()
+    plt.show()
+    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep_f0.png')
 
     cf['story'].append(renderFigureToReport(fig))
 
@@ -373,6 +395,11 @@ def plot_devResult(a_df):
     
 
 def addReportPressureIterHeader(a_pres):
+
+    title = Paragraph("Pressure sweep", cf['styles']['Title'])
+    cf['story'].append(title)
+    cf['story'].append(Spacer(1, 24))
+    
     
     # Подготавливаем данные для таблицы
     header_row = [i+1 for i in range(len(a_pres))]  # Номера элементов (1-based)
@@ -402,3 +429,38 @@ def addReportPressureIterHeader(a_pres):
 
     # Добавляем таблицу в документ
     cf['story'].append(table)
+    
+def addReportFrequencyIterHeader(a_freqs, a_inds):
+    
+    title = Paragraph("Frequency sweep", cf['styles']['Title'])
+    cf['story'].append(title)
+    cf['story'].append(Spacer(1, 24))
+    
+    # Подготавливаем данные для таблицы
+    header_row = [i+1 for i in range(len(a_freqs))]  # Номера элементов (1-based)
+    
+    # Создаем таблицу (2 строки)
+    table_data = [
+        header_row,
+        np.array(a_freqs)/1e6,
+        np.array(a_inds)*1e9
+    ]
+
+    table = Table(table_data)
+    
+    # Добавляем стили таблицы
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Заголовок
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ])
+
+    table.setStyle(style)
+
+    # Добавляем таблицу в документ
+    cf['story'].append(table)    
