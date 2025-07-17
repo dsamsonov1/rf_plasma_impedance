@@ -177,7 +177,8 @@ def calcCircuit():
     simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
 
     # print(simulator) # Можно напечатать .IC для проверки
-    print(circuit) # Можно напечатать получившийся netlist для проверки
+    if cf["verbose_plots"]:
+        print(circuit) # Можно напечатать получившийся netlist для проверки
 
     # Сформировать строку с ngspice netlist для отчета
     cf['sim_circ'] = str(circuit)
@@ -345,7 +346,10 @@ def calc_dischargePoint():
     
             redefineCircuitParameters()
             calcCircuit()
-            plot_UI2(iter_no)
+            
+            if cf["verbose_plots"]:
+                plot_UI2(iter_no)
+                
             calcPlasmaQuantities(postprocess=False)
     
             ##############

@@ -132,7 +132,7 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'sn'
+workmode = 'sp'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'])
@@ -150,8 +150,8 @@ match workmode:
         
         
 #        press = [1]
-#        press = [1, 2.5, 5]
-        press = [1, 2.5, 5, 7.5, 10]
+        press = [1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+#        press = [1, 2.5, 5, 7.5, 10]
 
         addReportPressureIterHeader(press)
         
