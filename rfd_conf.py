@@ -126,7 +126,7 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'dts3'
+cfname = 'dts2'
 sfname = 'sweeps'
 
 cf = loadConf(cfname)

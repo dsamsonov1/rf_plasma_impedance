@@ -254,7 +254,7 @@ def plot_sweepResult(a_df):
     fig.suptitle(f'{cf['name']}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
     plt.tight_layout()
     plt.show()
-    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep_p0.png')
+    fig.savefig(f'{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_p0.png')
 
     cf['story'].append(renderFigureToReport(fig))
 
@@ -276,7 +276,7 @@ def plot_sweepFreqResult(a_df):
     fig.suptitle(f'{cf['name']}: Ar p0={cf["p0"]:.1f} [Pa] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
     plt.tight_layout()
     plt.show()
-    fig.savefig(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_sweep_f0.png')
+    fig.savefig(f'{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_f0.png')
 
     cf['story'].append(renderFigureToReport(fig))
 

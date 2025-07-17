@@ -622,9 +622,9 @@ def is_valid_date(date_str):
     except ValueError:
         return False
 
-def get_next_available_aaaa(base_directory, bb):
+def get_next_available_aaaa(base_directory, bb, cc):
     """
-    Checks for subdirectories matching the pattern BB_AAAA_YYYY-MM-DD
+    Checks for subdirectories matching the pattern BB_CC_AAAA_YYYY-MM-DD
     and returns the next available AAAA. If no existing matches are found, returns 0.
     Raises an error if the next AAAA is unavailable (i.e., exceeds 9999).
     
@@ -634,7 +634,7 @@ def get_next_available_aaaa(base_directory, bb):
     :raises ValueError: If the next AAAA exceeds 9999.
     """
     # Define the regex pattern to match the required directory format
-    regex = re.compile(rf"^{re.escape(bb)}_(\d{{4}})_(\d{{4}})-(\d{{2}})-(\d{{2}})$")
+    regex = re.compile(rf"^{re.escape(bb)}_{re.escape(cc)}_(\d{{4}})_(\d{{4}})-(\d{{2}})-(\d{{2}})$")
 
     existing_a = []
 
@@ -663,7 +663,7 @@ def get_next_available_aaaa(base_directory, bb):
         raise ValueError("No available AAAA left. Maximum limit reached.")
 
 
-def create_subdirectory(base_directory, aaaa, bb):
+def create_subdirectory(base_directory, aaaa, bb, cc):
     """
     Creates a subdirectory with the name format AAAA-BB_YYYY-MM-DD.
     
@@ -683,7 +683,7 @@ def create_subdirectory(base_directory, aaaa, bb):
     current_date = datetime.now().strftime("%Y-%m-%d")
     
     # Create the directory name
-    directory_name = f"{bb}_{formatted_aaaa}_{current_date}"
+    directory_name = f"{bb}_{cc}_{formatted_aaaa}_{current_date}"
     
     # Create the full path for the new subdirectory
     full_path = os.path.join(base_directory, directory_name)
