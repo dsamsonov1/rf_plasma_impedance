@@ -77,7 +77,7 @@ def plot_UI():
     # Строим ток и напряжение на плазме (2 периода)
 
     #TODO разобраться с отображением и учетом в коде steady линии на графике
-    first_steady_period = 400  # Номер периода, с которого считаем, что установившийся режим наступил
+    first_steady_period = cf["num_periods_sim"]-cf["num_periods_for_integration"]  # Номер периода, с которого считаем, что установившийся режим наступил
 
     time_2_last_periods = extract_N_periods(time_raw, 1, 2, 'rev')
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2, 'rev')

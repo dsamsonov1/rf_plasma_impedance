@@ -52,6 +52,8 @@ def loadConf(a_cfname):
     o_cf["eps_ne"] = data["eps_ne"]
     o_cf["max_iter_ne"] = data["max_iter_ne"]
     o_cf["verbose_plots"] = data["verbose_plots"]
+    o_cf["verbose_circuit"] = data["verbose_circuit"]
+    o_cf["num_periods_sim"] = data['num_periods_sim']  # Количество периодов ВЧ поля, которое надо просчитать
     o_cf["cooling"] = data["cooling"]
 
     return o_cf
@@ -126,8 +128,8 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'dts2'
-sfname = 'sweeps'
+cfname = 'dts2-1'
+sfname = 'sweeps-dts1'
 
 cf = loadConf(cfname)
 sw = loadSweeps(sfname)

@@ -131,8 +131,43 @@ eps_c = np.vectorize(eps_c_novec, otypes=[float])
 ##########
 
 def calcCircuit():
+    
+    def check_steady_state(time, output, threshold):
+        """
+        Check if the output voltage has reached steady state by comparing
+        the amplitude variation in the last period.
+        """
+        # Find indices for the last complete period
+        time_period = cf['Tf']*cf["num_periods_sim"]  # 50 Hz signal
+        mask_current = (time >= time_period*period) & (time <= time_period*(period+1))
+        mask_previous = (time >= time_period*(period-1)) & (time <= time_period*period)
+        
+        if not np.any(mask_current):
+            return False  # Not enough data to check
+        
+        current_period_voltage = np.mean(output[mask_current])
+        previous_period_voltage = np.mean(output[mask_previous])
+        
+        relative_variation = np.abs(1 - (current_period_voltage / previous_period_voltage))
+        
+#        print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)", end = ' ')
+        
+#        plt.figure(figsize=(12, 5))
+#        plt.plot(time[mask_current], output[mask_current])
+#        plt.plot(time[mask_previous], output[mask_previous])
 
-    if cf["verbose_plots"]:
+#        plt.text(0.02, 0.98, f'step #{period}', 
+#                 transform=plt.gca().transAxes,
+#                 verticalalignment='top',
+#                 horizontalalignment='left',
+#                 bbox=dict(facecolor='white', alpha=0.5))
+    
+#        plt.show()
+        
+        return relative_variation < threshold
+    
+
+    if cf["verbose_circuit"]:
         print(f' - VERBOSE: Lp={cf["Lp"] * 1e9:.2f} [nH] Rp={cf["Rp"]:.2f} [Ohm] alpha={cf["alpha"]:.2e}')
         print(f' - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
         print(f' - VERBOSE: Be_g={cf["Ie02"]:.3f} Bi_g={cf["Iion2"]:.2e} Cs2={np.sqrt(cf["CCs2"]):.2e}/sqrt(Vs_g(t))')
@@ -177,14 +212,54 @@ def calcCircuit():
     simulator._initial_condition = {'v(5)': 1e-10, 'v(9)': 1e-10}
 
     # print(simulator) # Можно напечатать .IC для проверки
-    if cf["verbose_plots"]:
+    if cf['verbose_circuit']:
         print(circuit) # Можно напечатать получившийся netlist для проверки
 
     # Сформировать строку с ngspice netlist для отчета
     cf['sim_circ'] = str(circuit)
 
-#    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
-    cf['analysis'] = simulator.transient(step_time=cf["Tf"] / cf['sim_periods_div'], end_time=cf["tmax_sim"])
+    # Run simulation in segments, checking for steady state
+    current_time = 0
+    period = 0
+    all_time = np.array([])
+    all_input = np.array([])
+    all_output = np.array([])
+    steady_state_reached = False
+    max_periods = 100
+
+    # Simulation parameters
+    end_time = max_periods*cf["tmax_sim"]
+    check_interval = 10*cf['Tf']  # Interval between steady-state checks
+    steady_state_threshold = 0.01  # 1% change considered steady
+    
+    
+    while current_time < end_time or period < max_periods:
+        next_time = min(current_time + cf["tmax_sim"], end_time)
+#        print(f"Circ #{period}: {current_time/cf['Tf']:.1f}-{next_time/cf['Tf']:.1f}", end=' ')
+        
+        # Run transient simulation for this segment
+        #    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
+        analysis = simulator.transient(step_time=cf["Tf"] / cf['sim_periods_div'], end_time=next_time)
+        
+        time_segment = np.array(analysis.time)
+        output_segment = np.array(analysis['5'])-np.array(analysis['7'])  # Voltage at 'out' node
+        
+        # Check for steady state (after first segment)
+        if current_time > 0:
+            steady_state_reached = check_steady_state(np.array(analysis.time), np.array(analysis['5'])-np.array(analysis['7']), 
+                                                    steady_state_threshold)
+            if steady_state_reached:
+#                print("+", end='\n')
+                cf['analysis'] = analysis
+                break
+        
+        current_time = next_time
+        
+        period = period+1
+        
+        if period >= max_periods:
+            sys.exit("CIRCUIT STEADY STATE NOT REACHED. PERIODS LIMIT REACHED. STOP.")
+
 
 def plot_UI2(a_iter=0):
 
@@ -207,7 +282,7 @@ def plot_UI2(a_iter=0):
     # Строим ток и напряжение на плазме (2 периода)
 
     #TODO разобраться с отображением и учетом в коде steady линии на графике
-    first_steady_period = 400  # Номер периода, с которого считаем, что установившийся режим наступил
+    first_steady_period = cf["num_periods_sim"]-cf["num_periods_for_integration"]  # Номер периода, с которого считаем, что установившийся режим наступил
 
     time_2_last_periods = extract_N_periods(time_raw, 1, 2, 'rev')
     Vpl_2_last_periods = extract_N_periods(Vpl_raw, 1, 2, 'rev')
@@ -532,14 +607,15 @@ def redefineRuntimeParams():
     # 4. Настройки анализа Ngspice и алгоритма
     #################
 
-    cf["num_periods_sim"] = 500  # Количество периодов ВЧ поля, которое надо просчитать
+#   Теперь берется из конф. файла модели и sweep
+#    cf["num_periods_sim"] = 500  # Количество периодов ВЧ поля, которое надо просчитать
     cf["sim_periods_div"] = 100  # Количество точек результата на период и шаг по времени расчета цепи
     cf["tmax_sim"] = cf["Tf"] * cf["num_periods_sim"]  # Сколько времени просчитывать в Ngspice
     cf["tmin_sim"] = cf["Tf"] * (cf["num_periods_sim"] - 5)  # От какого времени делать вывод
     cf["timestep_output"] = cf["Tf"] / cf["sim_periods_div"]  # Шаг, с которым будет вывод
     # Минимально необходимое количество периодов на интегрирование ДУ цепи, при котором результат интеграла сходится.
     # Это и будет критерий наступления установившегося режима
-    cf["num_periods_for_integration"] = 50
+    cf["num_periods_for_integration"] = 10
     cf["first_steady_period"] = cf["num_periods_sim"] - cf["num_periods_for_integration"]
 #    cf['ngspice_sim_step_period_frac'] = 500
 

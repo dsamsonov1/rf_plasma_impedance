@@ -166,10 +166,16 @@ match workmode:
             addReportFrequencyIterHeader(sw['sf']['freqs'], sw['sf']['inds'])
             
             for i in range(len(sw['sf']['freqs'])):
-                cf["f0"] = sw['sf']['freqs'][i]
-                cf["val_L_m2"] = sw['sf']['inds'][i]
+                cf['f0'] = sw['sf']['freqs'][i]
+                cf['val_L_m2'] = sw['sf']['inds'][i]
+                cf['beta'] = sw['sf']['beta_override'][i]
+                cf['max_iter_ne'] = sw['sf']['max_iter_ne_override'][i]
+                cf['C_m1_init'] = sw['sf']['Cm1_override'][i]
+                cf['C_m2_init'] = sw['sf']['Сm2_override'][i]
+                cf["ne_init"] = sw['sf']['ne_init_override'][i]
+                cf["num_periods_sim"] = sw['sf']['num_periods_sim_override'][i]
 
-                pstr = f'=== SWEEP STEP #{i+1}: f0={cf["f0"]/1e6} [MHz], L_m2={cf["val_L_m2"]*1e9} [nH]'
+                pstr = f'=== SWEEP STEP #{i+1}: f0={cf['f0']/1e6} [MHz], L_m2={cf['val_L_m2']*1e9} [nH], C_m1={cf['C_m1_init']*1e12} [pF], beta={cf['beta']}, max_iter_ne={cf['max_iter_ne']}'
                 print(pstr)
 
                 df = solveDischargePoint(df, True)
@@ -258,3 +264,4 @@ finalizeReport()
 #TODO Сделать PDF отчет, включающий графики каждой итерации для контроля качества модели
 #TODO Сделать расчет скорости и селективности травления через оценку IEDF
 #TODO Приделать контроль установившегося режима в цепи (breakpoint в ngspice?)
+#TODO Приделать поиск оптимальных значений последовательной индуктивности и емкости на разных частотах в заданных рамках
