@@ -53,8 +53,10 @@ def loadConf(a_cfname):
     o_cf["max_iter_ne"] = data["max_iter_ne"]
     o_cf["verbose_plots"] = data["verbose_plots"]
     o_cf["verbose_circuit"] = data["verbose_circuit"]
+    o_cf['verbose_circ_plots'] = data['verbose_circ_plots']
     o_cf["num_periods_sim"] = data['num_periods_sim']  # Количество периодов ВЧ поля, которое надо просчитать
     o_cf["cooling"] = data["cooling"]
+    o_cf["version"] = '0.5.001'
 
     return o_cf
 
@@ -77,7 +79,7 @@ def add_header_footer(canvas, doc):
     canvas.saveState()
     
     # Верхний колонтитул (header)
-    header_text = f"rf-discharge; config {cf['name']}; run# {cf['next_aaaa']}; date {cf['current_date']}"
+    header_text = f"rfd ver. {cf['version']}; config {cf['name']}; run# {cf['next_aaaa']}; date {cf['current_date']}"
 
     # Убедимся, что текст не выходит за пределы страницы
     header_y = A4[1] - 20*mm  # 20 мм от верхнего края
@@ -128,8 +130,8 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'dts2-1'
-sfname = 'sweeps-dts1'
+cfname = 'pc1'
+sfname = 'sweeps-pc1'
 
 cf = loadConf(cfname)
 sw = loadSweeps(sfname)

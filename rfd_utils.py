@@ -150,19 +150,21 @@ def calcCircuit():
         
         relative_variation = np.abs(1 - (current_period_voltage / previous_period_voltage))
         
-#        print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)", end = ' ')
+        if cf['verbose_circuit']:
+            print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)", end = ' ')
         
-#        plt.figure(figsize=(12, 5))
-#        plt.plot(time[mask_current], output[mask_current])
-#        plt.plot(time[mask_previous], output[mask_previous])
-
-#        plt.text(0.02, 0.98, f'step #{period}', 
-#                 transform=plt.gca().transAxes,
-#                 verticalalignment='top',
-#                 horizontalalignment='left',
-#                 bbox=dict(facecolor='white', alpha=0.5))
+        if cf['verbose_circ_plots']:
+            plt.figure(figsize=(12, 5))
+            plt.plot(time[mask_current], output[mask_current])
+            plt.plot(time[mask_previous], output[mask_previous])
     
-#        plt.show()
+            plt.text(0.02, 0.98, f'step #{period}', 
+                     transform=plt.gca().transAxes,
+                     verticalalignment='top',
+                     horizontalalignment='left',
+                     bbox=dict(facecolor='white', alpha=0.5))
+        
+            plt.show()
         
         return relative_variation < threshold
     

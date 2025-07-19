@@ -20,5 +20,8 @@
     "eps_ne": 1e11,
     "max_iter_ne": 50,
     "verbose_plots": false,
+    "verbose_circuit": false,
+    "verbose_circ_plots": false,
+    "num_periods_sim": 200,
     "cooling": false
 }

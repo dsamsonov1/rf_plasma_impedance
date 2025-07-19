@@ -1,6 +1,6 @@
 {
     "comment": "Активная спектроскопия. Развязанное зеркало",
-    "Vm":  350,
+    "Vm":  150,
     "f0":  80e6,
     "p0":  3,
     "T0":  400,
@@ -17,8 +17,11 @@
     "val_C_stray": 200e-12,
     "val_R_stray": 0.1,
     "matching_flag": true,
-    "eps_ne": 1e11,
+    "eps_ne": 5e11,
     "max_iter_ne": 50,
     "verbose_plots": false,
+    "verbose_circuit": false,
+    "verbose_circ_plots": false,
+    "num_periods_sim": 200,
     "cooling": false
 }
