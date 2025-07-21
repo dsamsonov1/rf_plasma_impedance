@@ -232,7 +232,7 @@ def calcCircuit():
     # Simulation parameters
     end_time = max_periods*cf["tmax_sim"]
     check_interval = 10*cf['Tf']  # Interval between steady-state checks
-    steady_state_threshold = 0.01  # 1% change considered steady
+    steady_state_threshold = 0.05  # 1% change considered steady
     
     
     while current_time < end_time or period < max_periods:
@@ -442,7 +442,7 @@ def calc_dischargePoint():
             # "регуляризация" для улучшения сходимости итераций ne (suggested by G. Marchiy)
             ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
     
-            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={np.abs(ne_new - cf["ne"]):.2e}', end=' ')
+            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={ne_new - cf["ne"]:.2e}', end=' ')
     
             if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
                 print(f'<- ne CONVERGED', end='\n')
@@ -627,7 +627,7 @@ def redefineRuntimeParams():
 
     sol = optimize.root_scalar(dfr, bracket=[1, 7], x0=3, x1=5, xtol=1e-3, method='secant')
     cf["Te"] = sol.root
-    print(f'Te={cf["Te"]:.2f} [eV], initial ne={cf["ne"]:.2e}')
+    print(f'Te={cf['Te']:.2f} [eV], f0={cf['f0']/1e6:.2f} [MHz], initial ne={cf['ne']:.2e}')
 
     ##############
     # 6. Определение цены ионизации газа

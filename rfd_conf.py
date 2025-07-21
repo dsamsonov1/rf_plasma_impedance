@@ -130,8 +130,8 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'pc1'
-sfname = 'sweeps-pc1'
+cfname = 'dts5'
+sfname = 'sweeps-dts4'
 
 cf = loadConf(cfname)
 sw = loadSweeps(sfname)

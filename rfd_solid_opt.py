@@ -75,7 +75,7 @@ def iterateC():
 
         matching_cond = np.abs(cf["val_C_m1"] - val_C_m1_prev) > 1e-12 or np.abs(cf["val_C_m2"] - val_C_m2_prev) > 1e-12
 
-        print(f'-- dCm1={np.abs(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={np.abs(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]', end=' ')
+        print(f'-- dCm1={(cf["val_C_m1"] - val_C_m1_prev) * 1e12:.2f} [pF], dCm2={(cf["val_C_m2"] - val_C_m2_prev) * 1e12:.2f} [pF]', end=' ')
 
         if matching_cond:
             print(f'<- NEW MATCHING VALUES: C1={cf["val_C_m1"] * 1e12:.2f} C2={cf["val_C_m2"] * 1e12:.2f}\n')
@@ -132,7 +132,7 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'sf'
+workmode = 'sn'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'], workmode)
@@ -261,7 +261,5 @@ df.to_excel(f'{cf['out_path']}/{cf['name']}_{workmode}_{cf['next_aaaa']:04d}_{cf
 finalizeReport()
 
 #TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета
-#TODO Сделать PDF отчет, включающий графики каждой итерации для контроля качества модели
 #TODO Сделать расчет скорости и селективности травления через оценку IEDF
-#TODO Приделать контроль установившегося режима в цепи (breakpoint в ngspice?)
 #TODO Приделать поиск оптимальных значений последовательной индуктивности и емкости на разных частотах в заданных рамках
