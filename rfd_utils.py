@@ -232,7 +232,7 @@ def calcCircuit():
     # Simulation parameters
     end_time = max_periods*cf["tmax_sim"]
     check_interval = 10*cf['Tf']  # Interval between steady-state checks
-    steady_state_threshold = 0.05  # 1% change considered steady
+    steady_state_threshold = 0.005  # 1% change considered steady
     
     
     while current_time < end_time or period < max_periods:
