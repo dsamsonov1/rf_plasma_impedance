@@ -1,3 +1,4 @@
 ./out/*
 ./.spyproject/*
 ./snippets/*
+./__pycache__/*

@@ -251,10 +251,10 @@ def plot_sweepResult(a_df):
     a_df.plot(ax=fig.add_subplot(gs[8]), x='p0 [Pa]', y=['Re(Zp) [Ohm]'], marker='x')
     a_df.plot(ax=fig.add_subplot(gs[9]), x='p0 [Pa]', y=['Im(Zp) [Ohm]'], marker='x')
     a_df.plot(ax=fig.add_subplot(gs[10]), x='p0 [Pa]', y=['jIon1 [uA/cm^2]', 'jIon2 [uA/cm^2]'], marker='x')
-    fig.suptitle(f'{cf['name']}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
+    fig.suptitle(f'{cf["name"]}: Ar f0={cf["f0"]/1e6:.2f} [MHz] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
     plt.tight_layout()
     plt.show()
-    fig.savefig(f'{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_p0.png')
+    fig.savefig(f"{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_p0.png")
 
     cf['story'].append(renderFigureToReport(fig))
 
@@ -273,10 +273,10 @@ def plot_sweepFreqResult(a_df):
     a_df.plot(ax=fig.add_subplot(gs[8]), x='f0 [MHz]', y=['Re(Zp) [Ohm]'], marker='x')
     a_df.plot(ax=fig.add_subplot(gs[9]), x='f0 [MHz]', y=['Im(Zp) [Ohm]'], marker='x')
     a_df.plot(ax=fig.add_subplot(gs[10]), x='f0 [MHz]', y=['jIon1 [uA/cm^2]', 'jIon2 [uA/cm^2]'], marker='x')
-    fig.suptitle(f'{cf['name']}: Ar p0={cf["p0"]:.1f} [Pa] L={cf["l_B"]/1e-2:.2f} [cm] Ae={cf["Ae"]*1e4:.2f} [cm^2] Ag={cf["Ag"]*1e4:.2f} [cm^2] P0={cf["P0"]:.1f} [W]')
+    fig.suptitle(f"{cf['name']}: Ar p0={cf['p0']:.1f} [Pa] L={cf['l_B']/1e-2:.2f} [cm] Ae={cf['Ae']*1e4:.2f} [cm^2] Ag={cf['Ag']*1e4:.2f} [cm^2] P0={cf['P0']:.1f} [W]")
     plt.tight_layout()
     plt.show()
-    fig.savefig(f'{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_f0.png')
+    fig.savefig(f"{cf['out_path']}/{cf['name']}_{cf['next_aaaa']:04d}_{cf['current_date']}_sweep_f0.png")
 
     cf['story'].append(renderFigureToReport(fig))
 
@@ -315,7 +315,7 @@ def plot_devResult(a_df):
     
     # Label each point with its coordinates
     for index in range(len(a_df['C1 [pF]'])):
-        ax.text(a_df['C1 [pF]'].values[index], a_df['C2 [pF]'].values[index], f'{a_df['f0 [MHz]'].values[index]:.2f}; {a_df['G2'].values[index]:.2f}; {a_df['Pp [W]'].values[index]:.2f}', 
+        ax.text(a_df['C1 [pF]'].values[index], a_df['C2 [pF]'].values[index], f"{a_df['f0 [MHz]'].values[index]:.2f}; {a_df['G2'].values[index]:.2f}; {a_df['Pp [W]'].values[index]:.2f}", 
                 ha='left', va='bottom',
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
     

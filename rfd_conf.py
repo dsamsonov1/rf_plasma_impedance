@@ -103,7 +103,7 @@ def add_header_footer(canvas, doc):
 
 def initReport():
     # Create PDF document
-    cf['doc'] = SimpleDocTemplate(f'{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_report.pdf', pagesize=letter,
+    cf['doc'] = SimpleDocTemplate(f"{cf['out_path']}/{cf['next_aaaa']:04d}_{cf['name']}_{cf['current_date']}_report.pdf", pagesize=letter,
                             rightMargin=72, leftMargin=72,
                             topMargin=72, bottomMargin=72)
     

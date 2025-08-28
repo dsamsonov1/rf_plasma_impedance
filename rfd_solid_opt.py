@@ -138,7 +138,7 @@ df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'], workmode)
 cf['out_path'], cf['current_date'] = create_subdirectory('out/', cf['next_aaaa'], cf['name'], workmode)
 # Redirect stdout to the Logger
-sys.stdout = Logger(f'{cf['out_path']}/output.log')    
+sys.stdout = Logger(f'{cf["out_path"]}/output.log')    
 initReport()
 
 match workmode:
@@ -175,7 +175,7 @@ match workmode:
                 cf["ne_init"] = sw['sf']['ne_init_override'][i]
                 cf["num_periods_sim"] = sw['sf']['num_periods_sim_override'][i]
 
-                pstr = f'=== SWEEP STEP #{i+1}: f0={cf['f0']/1e6} [MHz], L_m2={cf['val_L_m2']*1e9} [nH], C_m1={cf['C_m1_init']*1e12} [pF], beta={cf['beta']}, max_iter_ne={cf['max_iter_ne']}'
+                pstr = f'=== SWEEP STEP #{i+1}: f0={cf["f0"]/1e6} [MHz], L_m2={cf["val_L_m2"]*1e9} [nH], C_m1={cf["C_m1_init"]*1e12} [pF], beta={cf["beta"]}, max_iter_ne={cf["max_iter_ne"]}'
                 print(pstr)
 
                 df = solveDischargePoint(df, True)
@@ -257,7 +257,7 @@ match workmode:
     case _:
         sys.exit("Unknown work mode. STOP.")
         
-df.to_excel(f'{cf['out_path']}/{cf['name']}_{workmode}_{cf['next_aaaa']:04d}_{cf['current_date']}_tables.xlsx', index=False)
+df.to_excel(f'{cf["out_path"]}/{cf["name"]}_{workmode}_{cf["next_aaaa"]:04d}_{cf["current_date"]}_tables.xlsx', index=False)
 finalizeReport()
 
 #TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета

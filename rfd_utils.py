@@ -442,7 +442,7 @@ def calc_dischargePoint():
             # "регуляризация" для улучшения сходимости итераций ne (suggested by G. Marchiy)
             ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
     
-            print(f'Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf["ne"]:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={ne_new - cf["ne"]:.2e}', end=' ')
+            print(f"Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf['ne']:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={ne_new - cf['ne']:.2e}", end=' ')
     
             if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
                 print(f'<- ne CONVERGED', end='\n')
@@ -565,7 +565,7 @@ def calcPlasmaQuantities(postprocess=False):
         Urf = calcVoltage_Harm('5', '0', 2, a_realflag=False)
 
         if cf["verbose_plots"]:
-            print(f'  - VERBOZE: Vs_e={np.abs(cf['_Vs1']):.2f} [V] Vs_g={np.abs(cf['_Vs2']):.2f} [V]')
+            print(f"  - VERBOZE: Vs_e={np.abs(cf['_Vs1']):.2f} [V] Vs_g={np.abs(cf['_Vs2']):.2f} [V]")
 
         cf["pd"] = pd.DataFrame({'p0 [Pa]': [cf["p0"]], 'f0 [MHz]': [cf["f0"]/1e6], 'ne [m^-3]': [cf["ne"]], 'Te [eV]': [cf["Te"]],
                                  'C1 [pF]': [cf["val_C_m1"]/1e-12], 'C2 [pF]': [cf["val_C_m2"]/1e-12],
@@ -585,9 +585,9 @@ def calcPlasmaQuantities(postprocess=False):
 
 def printSimulationResults():
     calcPlasmaQuantities(postprocess=True)
-    print(f'Ppl={cf['pd']['Pp [W]'].values[0]:.2f} [W], PRm={cf['pd']['PRm [W]'].values[0]:.2f} [W], PRstray={cf['pd']['PRstray [W]'].values[0]:.2f} [W], TOTAL={cf['pd']['Ptot [W]'].values[0]:.2f} [W]')
-    print(f'Zi=({cf['pd']['Re(Zi) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zi) [Ohm]'].values[0]:.2f}) [Ohm], Zl=({cf['pd']['Re(Zl) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zl) [Ohm]'].values[0]:.2f}) [Ohm], Zp=({cf['pd']['Re(Zp) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zp) [Ohm]'].values[0]:.2f}) [Ohm]')
-    print(f'G={cf['pd']['G [1]'].values[0]:.2f}, G^2={cf['pd']['G^2 [1]'].values[0]:.2f}')
+    print(f"Ppl={cf['pd']['Pp [W]'].values[0]:.2f} [W], PRm={cf['pd']['PRm [W]'].values[0]:.2f} [W], PRstray={cf['pd']['PRstray [W]'].values[0]:.2f} [W], TOTAL={cf['pd']['Ptot [W]'].values[0]:.2f} [W]")
+    print(f"Zi=({cf['pd']['Re(Zi) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zi) [Ohm]'].values[0]:.2f}) [Ohm], Zl=({cf['pd']['Re(Zl) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zl) [Ohm]'].values[0]:.2f}) [Ohm], Zp=({cf['pd']['Re(Zp) [Ohm]'].values[0]:.2f}, {cf['pd']['Im(Zp) [Ohm]'].values[0]:.2f}) [Ohm]")
+    print(f"G={cf['pd']['G [1]'].values[0]:.2f}, G^2={cf['pd']['G^2 [1]'].values[0]:.2f}")
     print(f'=== SIMULATION COMPLETE ===\n')
 
 
@@ -627,7 +627,7 @@ def redefineRuntimeParams():
 
     sol = optimize.root_scalar(dfr, bracket=[1, 7], x0=3, x1=5, xtol=1e-3, method='secant')
     cf["Te"] = sol.root
-    print(f'Te={cf['Te']:.2f} [eV], f0={cf['f0']/1e6:.2f} [MHz], initial ne={cf['ne']:.2e}')
+    print(f"Te={cf['Te']:.2f} [eV], f0={cf['f0']/1e6:.2f} [MHz], initial ne={cf['ne']:.2e}")
 
     ##############
     # 6. Определение цены ионизации газа
