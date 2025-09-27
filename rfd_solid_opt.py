@@ -5,6 +5,8 @@ from rfd_utils import *
 from rfd_conf import *
 import pandas as pd
 from datetime import datetime
+import shutil
+
 
 from scipy.optimize import minimize, basinhopping
 
@@ -132,7 +134,7 @@ def solveDischargePoint(a_df, optimizeMatching=False):
 # 'mc' - Картирование импеданса нагрузки в зависимости от C1, C2
 # 'of' - Подбор частоты на минимизацию отражения при уходе C1, C2 
 
-workmode = 'sp'
+workmode = 'sn'
 
 df = pd.DataFrame()
 cf['next_aaaa'] = get_next_available_aaaa('out/', cf['name'], workmode)
@@ -140,6 +142,8 @@ cf['out_path'], cf['current_date'] = create_subdirectory('out/', cf['next_aaaa']
 # Redirect stdout to the Logger
 sys.stdout = Logger(f'{cf["out_path"]}/output.log')    
 initReport()
+shutil.copy(f'conf/{cf["name"]}.json5', f'{cf["out_path"]}/{cf["name"]}.json5');
+shutil.copy(f'conf/{sw["name"]}.json5', f'{cf["out_path"]}/{sw["name"]}.json5');
 
 match workmode:
     case 'sp':
@@ -260,6 +264,5 @@ match workmode:
 df.to_excel(f'{cf["out_path"]}/{cf["name"]}_{workmode}_{cf["next_aaaa"]:04d}_{cf["current_date"]}_tables.xlsx', index=False)
 finalizeReport()
 
-#TODO Копировать исходный файл конфигурации модели в каталог с результатами расчета
 #TODO Сделать расчет скорости и селективности травления через оценку IEDF
 #TODO Приделать поиск оптимальных значений последовательной индуктивности и емкости на разных частотах в заданных рамках

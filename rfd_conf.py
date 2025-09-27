@@ -71,6 +71,7 @@ def loadSweeps(a_cfname):
     s_cf["sf"] = data["sf"]
     s_cf["mc"] = data["mc"]
     s_cf["of"] = data["of"]
+    s_cf["name"] = a_cfname;
 
     return s_cf
 
@@ -130,8 +131,8 @@ def finalizeReport():
 #################
 
 #cfname = 'test_of_mode'
-cfname = 'vd1'
-sfname = 'sweeps-vd1'
+cfname = 'dts6'
+sfname = 'sweeps-dts6'
 
 cf = loadConf(cfname)
 sw = loadSweeps(sfname)
