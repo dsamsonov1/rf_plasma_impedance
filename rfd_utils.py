@@ -205,11 +205,10 @@ def calcCircuit():
 #    circuit.raw_spice = '.OPTIONS METHOD=KLU'
 
     circuit.raw_spice = '''
-.OPTIONS ABSTOL=1e-9 RELTOL=0.001 VNTOL=1e-6
-.OPTIONS ITL1=200 ITL2=200 ITL4=100
-.OPTIONS PIVTOL=1e-13 PIVREL=0.001
-.OPTIONS GMIN=1e-10  # Increase minimum conductance
-.OPTIONS METHOD=TRAP MAXORD=2
+.OPTIONS ABSTOL=1e-6 RELTOL=1e-3 VNTOL=1e-6 PIVTOL=1e-6 PIVREL=1e-3
+.OPTIONS GMIN=1e-9  # Increase minimum conductance
+.OPTIONS METHOD=GEAR
+.OPTIONS RSHUNT=1e12 CHGTOL=1e-14
 '''
 
     if cf["cooling"]:
@@ -250,8 +249,8 @@ def calcCircuit():
 #        print(f"Circ #{period}: {current_time/cf['Tf']:.1f}-{next_time/cf['Tf']:.1f}", end=' ')
         
         # Run transient simulation for this segment
-        #    print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
-        analysis = simulator.transient(step_time=cf["Tf"] / cf['sim_periods_div'], end_time=next_time)
+        #print(f'Ts {cf["Tf"] / 100:.2e} Te {cf["tmax_sim"]:.2e}')
+        analysis = simulator.transient(step_time=cf["Tf"] / cf['sim_periods_div'], end_time=next_time, use_initial_condition=True)
         
         time_segment = np.array(analysis.time)
         output_segment = np.array(analysis['5'])-np.array(analysis['7'])  # Voltage at 'out' node
@@ -269,7 +268,8 @@ def calcCircuit():
         current_time = next_time
         
         period = period+1
-        
+
+       
         if period >= max_periods:
             sys.exit("CIRCUIT STEADY STATE NOT REACHED. PERIODS LIMIT REACHED. STOP.")
 
