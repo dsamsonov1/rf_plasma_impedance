@@ -2,3 +2,4 @@
 ./.spyproject/*
 ./snippets/*
 ./__pycache__/*
+./__pycache__/

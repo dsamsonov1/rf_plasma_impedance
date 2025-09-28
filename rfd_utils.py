@@ -151,7 +151,7 @@ def calcCircuit():
         relative_variation = np.abs(1 - (current_period_voltage / previous_period_voltage))
         
         if cf['verbose_circuit']:
-            print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)", end = ' ')
+            print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)")
         
         if cf['verbose_circ_plots']:
             plt.figure(figsize=(12, 5))
@@ -188,12 +188,12 @@ def calcCircuit():
     circuit.R('Rm', 4, 5, cf["val_R_m"])
     circuit.C('Cstray', 5, 6, cf["val_C_stray"])
     circuit.R('Rstray', 6, 0, cf["val_R_stray"])
-    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {cf["Ie01"]}*exp({cf["alpha"]}*v(7,5)) : 1e-15')
+    circuit.BehavioralSource('Be_e', 5, 7, current_expression=f'v(7,5) > 0 ? {cf["Ie01"]}*exp({cf["alpha"]}*v(7,5)) : 1e-10')
     circuit.CurrentSource('Bi_e', 7, 5, cf["Iion1"])
     circuit.BehavioralCapacitor('Cs1', 7, 5, capacitance_expression=f'C=\'sqrt({cf["CCs1"]}/abs(v(7,5)))\'')
     circuit.L('L_p', 7, 8, cf["Lp"])
     circuit.R('R_p', 8, 9, cf["Rp"])
-    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {cf["Ie02"]}*exp({cf["alpha"]}*v(9,10)) : 1e-15')
+    circuit.BehavioralSource('Be_g', 10, 9, current_expression=f'v(9,10) > 0 ? {cf["Ie02"]}*exp({cf["alpha"]}*v(9,10)) : 1e-10')
     circuit.CurrentSource('Bi_g', 9, 10, cf["Iion2"])
     circuit.BehavioralCapacitor('Cs2', 9, 10, capacitance_expression=f'C=\'sqrt({cf["CCs2"]}/abs(v(9,10)))\'')
     circuit.VoltageSource('Viz', 10, 0, 0)
@@ -201,6 +201,16 @@ def calcCircuit():
 #    circuit.SingleLossyTransmissionLine('TL', 5, 0, 0, 0, model='ymod', length=1, raw_spice='\n.MODEL ymod txl R=0.1 L=8.972e-9 G=0 C=0.468e-12 length=22.12')
 #    circuit.LossyTransmission('TL', 5, 0, 0, 0, model='LOSSYMOD', raw_spice='\n.model LOSSYMOD ltra rel=2 r=0.1 g=0 l=8.972e-9 c=0.468e-12 len=12 nosteplimit compactrel=1.0e-3 compactabs=1.0e-14')
 #    circuit.LossyTransmission('TL', 5, 0, 0, 0, model='LOSSYMOD', raw_spice='\n.model LOSSYMOD ltra rel=1 r=1 l=8.972e-9 c=0.468e-12 len=5.53m compactrel=1.0e-2 compactabs=1.0e-8')
+
+#    circuit.raw_spice = '.OPTIONS METHOD=KLU'
+
+    circuit.raw_spice = '''
+.OPTIONS ABSTOL=1e-9 RELTOL=0.001 VNTOL=1e-6
+.OPTIONS ITL1=200 ITL2=200 ITL4=100
+.OPTIONS PIVTOL=1e-13 PIVREL=0.001
+.OPTIONS GMIN=1e-10  # Increase minimum conductance
+.OPTIONS METHOD=TRAP MAXORD=2
+'''
 
     if cf["cooling"]:
         circuit.R('R_rl', 5, 11, 0.01)
@@ -227,12 +237,12 @@ def calcCircuit():
     all_input = np.array([])
     all_output = np.array([])
     steady_state_reached = False
-    max_periods = 100
+    max_periods = 15
 
     # Simulation parameters
     end_time = max_periods*cf["tmax_sim"]
     check_interval = 10*cf['Tf']  # Interval between steady-state checks
-    steady_state_threshold = 0.005  # 1% change considered steady
+    steady_state_threshold = 0.005  # 0.5% change considered steady
     
     
     while current_time < end_time or period < max_periods:
@@ -248,6 +258,7 @@ def calcCircuit():
         
         # Check for steady state (after first segment)
         if current_time > 0:
+            
             steady_state_reached = check_steady_state(np.array(analysis.time), np.array(analysis['5'])-np.array(analysis['7']), 
                                                     steady_state_threshold)
             if steady_state_reached:
