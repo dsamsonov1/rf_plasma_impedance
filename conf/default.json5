@@ -1,23 +1,30 @@
 {
-    "name": "default",
-    "comment": "Default configuration",
-    "Vm":  180,
-    "f0":  81.36e6,
-    "p0":  5,
-    "T0":  300,
-    "ne":  1.25e+15,
-    "l_B": 5.7e-2,
-    "Ae": 0.0366,
-    "Ag": 0.0366,
-    "val_R_rf": 50,
-    "val_C_m1": 501e-12,
-    "val_C_m2": 128.37e-12,
-    "val_L_m2": 40e-9,
-    "val_R_m":  0.01,
-    "val_C_stray": 350e-12,
-    "val_R_stray": 0.03,
-    "matching_flag": true,
-    "eps_ne": 5e13,
-    "max_iter_ne": 20,
-    "verbose_plots": false
+    "name": "default",                      // Model name
+    "comment": "Default configuration",     // Text comment
+    "Vm":  180,                             // Voltage source amplitude [V]
+    "f0":  81.36e6,                         // Voltage sourge frequency [Hz]
+    "p0":  5,                               // Background gas pressure [Pa]
+    "T0":  300,                             // Background gas temperature [K]
+    "ne":  1.25e+15,                        // Initial guess plasma concentration
+    "beta": 0.85,                           // ne damping during iterations [0...1]
+    "l_B": 5.7e-2,                          // Discharge length [m]
+    "Ae": 0.0366,                           // Driven electrode surface area [m^2]
+    "Ag": 0.0366,                           // Grounded electrode surface area [m^2]
+    "val_R_rf": 50,                         // Rrf value [Ohm]
+    "val_C_m1": 501e-12,                    // Initial Cm1 value [F]
+    "val_C_m2": 128.37e-12,                 // Initial Cm2 value [F]
+    "val_L_m2": 40e-9,                      // Lm2 value [H]
+    "val_R_m":  0.01,                       // Rm value (loss in matchbox) [Ohm]
+    "val_C_stray": 350e-12,                 // Cstray value [F]
+    "val_R_stray": 0.03,                    // Rstray value (loss in electrode) [F]
+    "matching_flag": true,                  // Automatic matching when available (see docs)
+    "eps_ne": 5e13,                         // Convergence threshold
+    "max_iter_ne": 20,                      // Max ne iterations count (stop otherwise)
+    "verbose_plots": false,
+    "verbose_circuit": false,               // Text circuit output during each ne iteration
+    "verbose_circ_plots": false,
+    "num_periods_sim": 50,                  // Periods counnt to check circuit steady state
+    "cooling": false,                       // Plug band-stop filter to circuit (works unstable)
+    "steady_state_threshold": 0.005,        // Steady state threshold
+    "max_periods": 15                       // Max cycles to wait for steady state
 }

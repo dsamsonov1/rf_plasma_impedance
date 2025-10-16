@@ -88,7 +88,7 @@ def iterateC():
         else:
             print(f'<- MATCHING CONVERGED: C1={val_C_m1_prev * 1e12:.2f} C2={val_C_m2_prev * 1e12:.2f}\n')
 
-
+ 
 def solveDischargePoint(a_df, optimizeMatching=False):
         redefineRuntimeParams()
         if optimizeMatching:

@@ -56,7 +56,9 @@ def loadConf(a_cfname):
     o_cf['verbose_circ_plots'] = data['verbose_circ_plots']
     o_cf["num_periods_sim"] = data['num_periods_sim']  # Количество периодов ВЧ поля, которое надо просчитать
     o_cf["cooling"] = data["cooling"]
-    o_cf["version"] = '0.5.001'
+    o_cf["steady_state_threshold"] = data["steady_state_threshold"]
+    o_cf["max_periods"] = data["max_periods"]
+    o_cf["version"] = '0.5.002'
 
     return o_cf
 

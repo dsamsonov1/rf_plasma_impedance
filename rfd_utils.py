@@ -151,7 +151,7 @@ def calcCircuit():
         relative_variation = np.abs(1 - (current_period_voltage / previous_period_voltage))
         
         if cf['verbose_circuit']:
-            print(f"var: {relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)")
+            print(f"Steady check: rel={relative_variation:.2f} (1: {previous_period_voltage:.2f}V, 2: {current_period_voltage:.2f}V)")
         
         if cf['verbose_circ_plots']:
             plt.figure(figsize=(12, 5))
@@ -168,7 +168,6 @@ def calcCircuit():
         
         return relative_variation < threshold
     
-
     if cf["verbose_circuit"]:
         print(f' - VERBOSE: Lp={cf["Lp"] * 1e9:.2f} [nH] Rp={cf["Rp"]:.2f} [Ohm] alpha={cf["alpha"]:.2e}')
         print(f' - VERBOSE: Be_e={cf["Ie01"]:.3f} Bi_e={cf["Iion1"]:.2e} Cs1={np.sqrt(cf["CCs1"]):.2e}/sqrt(Vs_e(t))')
@@ -236,12 +235,12 @@ def calcCircuit():
     all_input = np.array([])
     all_output = np.array([])
     steady_state_reached = False
-    max_periods = 15
+#    max_periods = 15
 
     # Simulation parameters
-    end_time = max_periods*cf["tmax_sim"]
+    end_time = cf["max_periods"]*cf["tmax_sim"]
     check_interval = 10*cf['Tf']  # Interval between steady-state checks
-    steady_state_threshold = 0.005  # 0.5% change considered steady
+#    steady_state_threshold = 0.005  # 0.5% change considered steady
     
     
     while current_time < end_time or period < max_periods:
@@ -259,7 +258,7 @@ def calcCircuit():
         if current_time > 0:
             
             steady_state_reached = check_steady_state(np.array(analysis.time), np.array(analysis['5'])-np.array(analysis['7']), 
-                                                    steady_state_threshold)
+                                                    cf["steady_state_threshold"])
             if steady_state_reached:
 #                print("+", end='\n')
                 cf['analysis'] = analysis
@@ -268,9 +267,8 @@ def calcCircuit():
         current_time = next_time
         
         period = period+1
-
        
-        if period >= max_periods:
+        if period >= cf["max_periods"]:
             sys.exit("CIRCUIT STEADY STATE NOT REACHED. PERIODS LIMIT REACHED. STOP.")
 
 
