@@ -54,13 +54,13 @@ def optimizeC():
 
 def iterateC():
     
-    miter = 0
-    miter_max = 50
+    rt["miter"] = 0
+#    miter_max = 50
     matching_cond = True
     
     while matching_cond:
-        miter = miter + 1
-        print(f'-- matching iteration #{miter: =2} starts: C1={cf["val_C_m1"] * 1e12:.2f} [pF], C2={cf["val_C_m2"] * 1e12:.2f} [pF]')
+        rt["miter"] = rt["miter"] + 1
+        print(f'-- matching iteration #{rt["miter"]: =2} starts: C1={cf["val_C_m1"] * 1e12:.2f} [pF], C2={cf["val_C_m2"] * 1e12:.2f} [pF]')
         val_C_m2_prev = cf["val_C_m2"]
         val_C_m1_prev = cf["val_C_m1"]
         
@@ -83,7 +83,7 @@ def iterateC():
             print(f'<- NEW MATCHING VALUES: C1={cf["val_C_m1"] * 1e12:.2f} C2={cf["val_C_m2"] * 1e12:.2f}\n')
             if cf["val_C_m1"] <= 0 or cf["val_C_m2"] <= 0:
                 sys.exit("Wrong C1 or C2 value. STOP.")
-            if miter >= miter_max:
+            if rt["miter"] >= cf["miter_max"]:
                 sys.exit("MATCHING NOT CONVERGED. MATCHING ITERATIONS LIMIT REACHED. STOP.")
         else:
             print(f'<- MATCHING CONVERGED: C1={val_C_m1_prev * 1e12:.2f} C2={val_C_m2_prev * 1e12:.2f}\n')

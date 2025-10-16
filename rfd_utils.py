@@ -411,6 +411,30 @@ def plot_UI2(a_iter=0):
     plt.show()
 
 
+def plot_UI3():
+
+    ##### Извлекаем интересующие токи и напряжения
+
+    time_raw = np.array(cf['analysis'].time)
+
+    Vpl_raw = getU('5', '0', cf['analysis'])  # Vpl
+
+    # Строим ток и напряжение на плазме (2 периода)
+
+    #TODO разобраться с отображением и учетом в коде steady линии на графике
+    first_steady_period = cf["num_periods_sim"]-cf["num_periods_for_integration"]  # Номер периода, с которого считаем, что установившийся режим наступил
+
+    # Графики переходного процесса для контроля сходимости
+    fig = plt.figure(figsize=(9, 10))
+    ax1 = fig.add_subplot(1, 1, 1)
+    ax1.plot(time_raw / cf["Tf"], Vpl_raw, label='Vp', alpha=0.5)  # Обзорный график для определения установившегося режима
+    ax1.set_ylabel('U [V]')
+    ax1.axvline(first_steady_period, color='cyan', linestyle=':', label='steady state')
+    ax1.legend()
+    _ = ax1.set_xlabel('Periods count')
+    ax1.set_title(f'Steady state check: mi# {rt["miter"]} ne# {rt["iter_no"]}')
+    plt.savefig(f'{cf["out_path"]}/tr_mi_{rt["miter"]}_ne_{rt["iter_no"]}.png')
+
 ##########
 # 8. Делаем итерации по ne
 ##########
@@ -418,17 +442,17 @@ def plot_UI2(a_iter=0):
 def calc_dischargePoint():
     
     ne_new = -2 * cf["eps_ne"]
-    iter_no = 0
+    rt['iter_no'] = 0
     
     while np.abs(cf["ne"] - ne_new) > cf["eps_ne"]:
     
-        if iter_no > 0:
+        if rt['iter_no'] > 0:
             cf["ne"] = ne_new
     
-        if iter_no < cf["max_iter_ne"]:
-            iter_no = iter_no + 1
+        if rt['iter_no'] < cf["max_iter_ne"]:
+            rt['iter_no'] = rt['iter_no'] + 1
     
-            print(f'  -- ne #{iter_no: =2}:', end=' ')
+            print(f'  -- ne #{rt["iter_no"]: =2}:', end=' ')
     
             redefineCircuitParameters()
             calcCircuit()
@@ -452,6 +476,7 @@ def calc_dischargePoint():
             ne_new = cf["ne"] + (ne_new - cf["ne"]) * cf["beta"]
     
             print(f"Ppl={cf['Ppl']:.2f} [W], Pguess={Pguess:.2f} [W], ne={cf['ne']:.2e} [m^-3], ne_new={ne_new:.2e} [m^-3] dne={ne_new - cf['ne']:.2e}", end=' ')
+            plot_UI3()
     
             if np.abs(ne_new - cf["ne"]) < cf["eps_ne"]:
                 print(f'<- ne CONVERGED', end='\n')
@@ -620,7 +645,7 @@ def redefineRuntimeParams():
 
 #   Теперь берется из конф. файла модели и sweep
 #    cf["num_periods_sim"] = 500  # Количество периодов ВЧ поля, которое надо просчитать
-    cf["sim_periods_div"] = 100  # Количество точек результата на период и шаг по времени расчета цепи
+    cf["sim_periods_div"] = 10  # Количество точек результата на период и шаг по времени расчета цепи
     cf["tmax_sim"] = cf["Tf"] * cf["num_periods_sim"]  # Сколько времени просчитывать в Ngspice
     cf["tmin_sim"] = cf["Tf"] * (cf["num_periods_sim"] - 5)  # От какого времени делать вывод
     cf["timestep_output"] = cf["Tf"] / cf["sim_periods_div"]  # Шаг, с которым будет вывод

@@ -58,6 +58,7 @@ def loadConf(a_cfname):
     o_cf["cooling"] = data["cooling"]
     o_cf["steady_state_threshold"] = data["steady_state_threshold"]
     o_cf["max_periods"] = data["max_periods"]
+    o_cf["miter_max"] = data["miter_max"]
     o_cf["version"] = '0.5.002'
 
     return o_cf
@@ -138,6 +139,10 @@ sfname = 'sweeps-dts6'
 
 cf = loadConf(cfname)
 sw = loadSweeps(sfname)
+
+rt: dict[str, Any] = {};
+#rt.setdefault("miter", 0)
+#rt.setdefault("iter_no", 0)
 
 # Размер зеркала макета М1: 250х185 -> площадь 0.0462 м2, емкость при d=1 мм: 410 пФ
 # Значения Rm и Rstray примерно соответствуют расчетам СУ с потерями
